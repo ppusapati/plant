@@ -1,0 +1,245 @@
+(kicad_sch (version 20230121) (generator eeschema)
+
+  (uuid "b2c3d4e5-f6a7-8901-bcde-f12345678901")
+
+  (paper "A3")
+
+  (title_block
+    (title "ADR-1 Handheld Controller Board")
+    (date "2026-02-27")
+    (rev "1.0")
+    (company "ADR-1 Project")
+    (comment 1 "4-Layer PCB - 140mm x 80mm")
+    (comment 2 "ESP32-S3 + SX1276 LoRa + ILI9488 Display")
+    (comment 3 "Joysticks + Buttons + NavIC GNSS")
+  )
+
+  (lib_symbols)
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; MAIN MCU - ESP32-S3-WROOM-1-N16R8
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "RF_Module:ESP32-S3-WROOM-1") (at 127.0 101.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-esp32s3")
+    (property "Reference" "U1" (at 127.0 63.5 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "ESP32-S3-WROOM-1-N16R8" (at 127.0 66.04 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_Module:ESP32-S3-WROOM-1" (at 127.0 68.58 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_datasheet_en.pdf" (at 127.0 71.12 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; LORA MODULE - SX1276 (RFM96W)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "RF_Module:RFM95W-868S2") (at 254.0 76.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-lora")
+    (property "Reference" "U2" (at 254.0 55.88 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "RFM96W-868S2 (SX1276)" (at 254.0 58.42 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_Module:HOPERF_RFM9xW_SMD" (at 254.0 60.96 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; GNSS - u-blox MAX-M10S (NavIC)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "RF_GPS:u-blox_MAX-M10S") (at 254.0 127.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-gnss")
+    (property "Reference" "U3" (at 254.0 111.76 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MAX-M10S (NavIC+GPS)" (at 254.0 114.3 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_GPS:u-blox_MAX" (at 254.0 116.84 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; DISPLAY CONNECTOR - ILI9488 3.5" TFT (SPI)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Connector_Generic:Conn_01x14") (at 50.8 101.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-display")
+    (property "Reference" "J1" (at 50.8 71.12 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "ILI9488 TFT 480x320" (at 50.8 73.66 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_FFC-FPC:FFC-FPC_14Pin_0.5mm_Horizontal" (at 50.8 76.2 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; JOYSTICKS (×2) - Alps RKJXV
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Device:R_POT_Dual") (at 50.8 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-joy-left")
+    (property "Reference" "RV1" (at 50.8 177.8 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "Joystick Left (Alps RKJXV)" (at 50.8 180.34 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "custom:Alps_RKJXV122400R" (at 50.8 182.88 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Device:R_POT_Dual") (at 101.6 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-joy-right")
+    (property "Reference" "RV2" (at 101.6 177.8 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "Joystick Right (Alps RKJXV)" (at 101.6 180.34 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "custom:Alps_RKJXV122400R" (at 101.6 182.88 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; BUTTONS (8× tactile + 1× E-STOP)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Switch:SW_Push") (at 152.4 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-mode")
+    (property "Reference" "SW1" (at 152.4 185.42 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MODE" (at 152.4 195.58 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 152.4 198.12 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Switch:SW_Push") (at 165.1 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-home")
+    (property "Reference" "SW2" (at 165.1 185.42 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "HOME" (at 165.1 195.58 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 165.1 198.12 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Switch:SW_Push") (at 177.8 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-menu")
+    (property "Reference" "SW3" (at 177.8 185.42 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MENU" (at 177.8 195.58 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 177.8 198.12 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Switch:SW_Push") (at 152.4 210.82 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-l1")
+    (property "Reference" "SW4" (at 152.4 205.74 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "L1" (at 152.4 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 152.4 218.44 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Switch:SW_Push") (at 165.1 210.82 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-l2")
+    (property "Reference" "SW5" (at 165.1 205.74 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "L2" (at 165.1 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 165.1 218.44 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Switch:SW_Push") (at 177.8 210.82 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-r1")
+    (property "Reference" "SW6" (at 177.8 205.74 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "R1" (at 177.8 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 177.8 218.44 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Switch:SW_Push") (at 190.5 210.82 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-btn-r2")
+    (property "Reference" "SW7" (at 190.5 205.74 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "R2" (at 190.5 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" (at 190.5 218.44 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; Emergency Stop Button
+  (symbol (lib_id "Switch:SW_Push") (at 220.98 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-estop")
+    (property "Reference" "SW8" (at 220.98 182.88 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "E-STOP (Mushroom)" (at 220.98 187.96 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "custom:LA38-11ZS_Mushroom" (at 220.98 198.12 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; HAPTIC - DRV2605L
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Driver_Haptic:DRV2605L") (at 254.0 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-haptic")
+    (property "Reference" "U4" (at 254.0 177.8 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "DRV2605LDGSR" (at 254.0 180.34 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm" (at 254.0 182.88 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER - MCP73871 (USB-C Charge + Load Share)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Battery_Management:MCP73871") (at 127.0 254.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-charger")
+    (property "Reference" "U5" (at 127.0 236.22 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MCP73871-2CCI" (at 127.0 238.76 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm" (at 127.0 241.3 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER - TPS63020 Buck-Boost (3.3V)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Regulator_Switching:TPS63020") (at 254.0 254.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-buckboost")
+    (property "Reference" "U6" (at 254.0 238.76 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "TPS63020DSJR (3.3V)" (at 254.0 241.3 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_DFN_QFN:Texas_S-PDSO-N14" (at 254.0 243.84 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; USB-C Connector
+  (symbol (lib_id "Connector:USB_C_Receptacle_USB2.0") (at 50.8 254.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-usbc")
+    (property "Reference" "J2" (at 50.8 233.68 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "USB-C (Charge + Debug)" (at 50.8 236.22 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4125" (at 50.8 238.76 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; microSD Card Slot
+  (symbol (lib_id "Connector:Micro_SD_Card") (at 254.0 50.8 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-sd")
+    (property "Reference" "J3" (at 254.0 33.02 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "microSD" (at 254.0 35.56 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_Card:microSD_HC_Molex_104031-0811" (at 254.0 38.1 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; Buzzer
+  (symbol (lib_id "Device:Buzzer") (at 294.64 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-buzzer")
+    (property "Reference" "BZ1" (at 294.64 182.88 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "CMT-8540S (3V Piezo)" (at 294.64 185.42 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Buzzer_Beeper:Buzzer_8.5x8.5mm" (at 294.64 187.96 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; WS2812B LEDs (×4)
+  (symbol (lib_id "LED:WS2812B") (at 294.64 127.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-led-1")
+    (property "Reference" "D1" (at 294.64 119.38 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "WS2812B-2020 (Status)" (at 294.64 121.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (at 294.64 124.46 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; LiPo Battery Connector
+  (symbol (lib_id "Connector_Generic:Conn_01x02") (at 50.8 299.72 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "ctrl-batt-conn")
+    (property "Reference" "J4" (at 50.8 292.1 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "LiPo 3.7V 3000mAh" (at 50.8 294.64 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical" (at 50.8 297.18 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; Text Annotations
+  (text "ESP32-S3 MCU" (at 127.0 50.8 0) (effects (font (size 2.54 2.54) bold)))
+  (text "LoRa + GNSS" (at 254.0 38.1 0) (effects (font (size 2.54 2.54) bold)))
+  (text "INPUT SECTION" (at 152.4 172.72 0) (effects (font (size 2.54 2.54) bold)))
+  (text "POWER MANAGEMENT" (at 127.0 228.6 0) (effects (font (size 2.54 2.54) bold)))
+  (text "DISPLAY" (at 50.8 63.5 0) (effects (font (size 2.54 2.54) bold)))
+  (text "FEEDBACK" (at 275.0 172.72 0) (effects (font (size 2.54 2.54) bold)))
+)

@@ -1,0 +1,63 @@
+[package]
+name = "adr1-controller-firmware"
+version = "0.1.0"
+edition = "2021"
+authors = ["ADR-1 Team"]
+description = "ADR-1 Handheld Controller firmware for ESP32-S3"
+license = "MIT"
+
+[dependencies]
+# ESP32-S3 HAL and runtime
+esp-hal = { version = "1.0.0-beta.0", features = ["esp32s3"] }
+esp-hal-embassy = { version = "0.7", features = ["esp32s3"] }
+esp-backtrace = { version = "0.15", features = ["esp32s3", "defmt", "panic-handler"] }
+esp-println = { version = "0.13", features = ["esp32s3", "defmt-espflash"] }
+esp-wifi = { version = "0.14", features = ["esp32s3", "ble", "wifi"] }
+esp-alloc = "0.7"
+
+# Embassy async runtime
+embassy-executor = { version = "0.7", features = ["task-arena-size-32768"] }
+embassy-time = "0.4"
+embassy-sync = "0.6"
+embassy-futures = "0.1"
+
+# Embedded basics
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+embedded-graphics = "0.8"
+defmt = "0.3"
+
+# Display driver
+display-interface-spi = "0.5"
+
+# Data structures
+heapless = "0.8"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+postcard = { version = "1.0", features = ["alloc"] }
+
+# Math
+libm = "0.2"
+micromath = "2.1"
+
+# CRC
+crc = "3.2"
+
+# Static allocation
+static_cell = "2.1"
+
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = "fat"
+opt-level = "s"
+overflow-checks = false
+
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = 1
+overflow-checks = true

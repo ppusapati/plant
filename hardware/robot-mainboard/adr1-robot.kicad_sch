@@ -1,0 +1,469 @@
+(kicad_sch (version 20230121) (generator eeschema)
+
+  (uuid "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+
+  (paper "A3")
+
+  (title_block
+    (title "ADR-1 Autonomous Deseeder Robot - Main Board")
+    (date "2026-02-27")
+    (rev "1.0")
+    (company "ADR-1 Project")
+    (comment 1 "6-Layer PCB - 150mm x 120mm")
+    (comment 2 "STM32H743VIT6 + ESP32-S3 + SX1276 LoRa")
+    (comment 3 "NavIC GNSS + Sensor Array + CAN/RS485")
+  )
+
+  (lib_symbols)
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER SYMBOLS
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "power:+3V3") (at 50.8 25.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "pwr-3v3-1")
+    (property "Reference" "#PWR01" (at 50.8 22.86 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "+3V3" (at 50.8 22.86 0) (effects (font (size 1.27 1.27))))
+  )
+
+  (symbol (lib_id "power:+5V") (at 76.2 25.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "pwr-5v-1")
+    (property "Reference" "#PWR02" (at 76.2 22.86 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "+5V" (at 76.2 22.86 0) (effects (font (size 1.27 1.27))))
+  )
+
+  (symbol (lib_id "power:+24V") (at 101.6 25.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "pwr-24v-1")
+    (property "Reference" "#PWR03" (at 101.6 22.86 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "+24V" (at 101.6 22.86 0) (effects (font (size 1.27 1.27))))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; MCU - STM32H743VIT6 (LQFP-100)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "MCU_ST_STM32:STM32H743VITx") (at 152.4 127.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "mcu-stm32h743")
+    (property "Reference" "U1" (at 152.4 50.8 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "STM32H743VIT6" (at 152.4 53.34 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_QFP:LQFP-100_14x14mm_P0.5mm" (at 152.4 55.88 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "https://www.st.com/resource/en/datasheet/stm32h743vi.pdf" (at 152.4 58.42 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; HSE Crystal 8MHz
+  (symbol (lib_id "Device:Crystal") (at 114.3 101.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "xtal-8mhz")
+    (property "Reference" "Y1" (at 114.3 96.52 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "8MHz" (at 114.3 99.06 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Crystal:Crystal_SMD_3215-2Pin_3.2x1.5mm" (at 114.3 104.14 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; LSE Crystal 32.768kHz
+  (symbol (lib_id "Device:Crystal") (at 114.3 116.84 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "xtal-32k")
+    (property "Reference" "Y2" (at 114.3 111.76 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "32.768kHz" (at 114.3 114.3 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Crystal:Crystal_SMD_2012-2Pin_2.0x1.2mm" (at 114.3 119.38 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; LORA - SX1276 Module (RFM96W)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "RF_Module:RFM95W-868S2") (at 279.4 76.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "lora-sx1276")
+    (property "Reference" "U2" (at 279.4 55.88 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "RFM96W-868S2 (SX1276)" (at 279.4 58.42 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_Module:HOPERF_RFM9xW_SMD" (at 279.4 60.96 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; SMA Connector for LoRa Antenna
+  (symbol (lib_id "Connector:Conn_Coaxial") (at 320.04 76.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "sma-lora")
+    (property "Reference" "J1" (at 320.04 71.12 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "SMA_868MHz" (at 320.04 73.66 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_Coaxial:SMA_Amphenol_132291_EdgeMount" (at 320.04 78.74 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; WiFi/BLE CO-PROCESSOR - ESP32-S3-WROOM-1
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "RF_Module:ESP32-S3-WROOM-1") (at 279.4 152.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "esp32-coprocessor")
+    (property "Reference" "U3" (at 279.4 127.0 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "ESP32-S3-WROOM-1-N16R8" (at 279.4 129.54 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_Module:ESP32-S3-WROOM-1" (at 279.4 132.08 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; GNSS - u-blox NEO-M9N (NavIC + GPS + GLONASS)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "RF_GPS:u-blox_NEO-M9N") (at 50.8 76.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "gnss-neom9n")
+    (property "Reference" "U4" (at 50.8 58.42 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "NEO-M9N (NavIC+GPS+GLONASS)" (at 50.8 60.96 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "RF_GPS:u-blox_NEO" (at 50.8 63.5 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; SMA Connector for GNSS Antenna
+  (symbol (lib_id "Connector:Conn_Coaxial") (at 50.8 50.8 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "sma-gnss")
+    (property "Reference" "J2" (at 50.8 45.72 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "SMA_GNSS" (at 50.8 48.26 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_Coaxial:SMA_Amphenol_132291_EdgeMount" (at 50.8 53.34 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; IMU - BNO055
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Sensor_Motion:BNO055") (at 50.8 152.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "imu-bno055")
+    (property "Reference" "U5" (at 50.8 137.16 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "BNO055" (at 50.8 139.7 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Sensor_Motion:Bosch_LGA-28_3.8x5.2mm" (at 50.8 142.24 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; ENVIRONMENTAL SENSOR - BME280
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Sensor:BME280") (at 50.8 203.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "env-bme280")
+    (property "Reference" "U6" (at 50.8 193.04 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "BME280" (at 50.8 195.58 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_LGA:Bosch_BME280_2.5x2.5mm" (at 50.8 198.12 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; RS485 TRANSCEIVERS - MAX3485 (×2)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Interface_UART:MAX3485") (at 152.4 228.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "rs485-1")
+    (property "Reference" "U7" (at 152.4 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MAX3485ESA+" (at 152.4 218.44 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" (at 152.4 220.98 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Interface_UART:MAX3485") (at 203.2 228.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "rs485-2")
+    (property "Reference" "U8" (at 203.2 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MAX3485ESA+" (at 203.2 218.44 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" (at 203.2 220.98 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; CAN TRANSCEIVER - MCP2562FD
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Interface_CAN_LIN:MCP2562FD-E-SN") (at 152.4 269.24 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "can-mcp2562")
+    (property "Reference" "U9" (at 152.4 256.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "MCP2562FD-E/SN" (at 152.4 259.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" (at 152.4 261.62 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; ADC - ADS1115 (×2)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Analog_ADC:ADS1115IDGS") (at 279.4 228.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "adc-ads1115-1")
+    (property "Reference" "U10" (at 279.4 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "ADS1115 (0x48)" (at 279.4 218.44 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm" (at 279.4 220.98 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Analog_ADC:ADS1115IDGS") (at 330.2 228.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "adc-ads1115-2")
+    (property "Reference" "U11" (at 330.2 215.9 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "ADS1115 (0x49)" (at 330.2 218.44 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm" (at 330.2 220.98 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER MONITOR - INA226 (×2)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Analog_ADC:INA226") (at 279.4 269.24 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "pmon-ina226-batt")
+    (property "Reference" "U12" (at 279.4 256.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "INA226 Battery (0x40)" (at 279.4 259.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm" (at 279.4 261.62 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Analog_ADC:INA226") (at 330.2 269.24 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "pmon-ina226-motor")
+    (property "Reference" "U13" (at 330.2 256.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "INA226 Motor (0x41)" (at 330.2 259.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm" (at 330.2 261.62 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; QSPI FLASH - W25Q128
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Memory_Flash:W25Q128JVS") (at 203.2 76.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "flash-w25q128")
+    (property "Reference" "U14" (at 203.2 63.5 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "W25Q128JVSIQ" (at 203.2 66.04 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:SOIC-8_5.23x5.23mm_P1.27mm" (at 203.2 68.58 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER SUPPLY - LM2596 (24V→5V)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Regulator_Switching:LM2596S-5") (at 50.8 279.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "buck-5v")
+    (property "Reference" "U15" (at 50.8 266.7 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "LM2596S-5.0 (24V→5V)" (at 50.8 269.24 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_TO_SOT_SMD:TO-263-5_TabPin3" (at 50.8 271.78 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER SUPPLY - TPS563200 (5V→3.3V)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Regulator_Switching:TPS563200") (at 101.6 279.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "buck-3v3")
+    (property "Reference" "U16" (at 101.6 266.7 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "TPS563200 (5V→3.3V)" (at 101.6 269.24 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_TO_SOT_SMD:SOT-23-6" (at 101.6 271.78 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; BATTERY MANAGEMENT - BQ76952
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Battery_Management:BQ76952") (at 50.8 330.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "bms-bq76952")
+    (property "Reference" "U17" (at 50.8 307.34 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "BQ76952PFBR" (at 50.8 309.88 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_DFN_QFN:TQFP-48_7x7mm_P0.5mm" (at 50.8 312.42 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; MPPT SOLAR CHARGER - LT3652
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Regulator_Switching:LT3652") (at 152.4 330.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "mppt-lt3652")
+    (property "Reference" "U18" (at 152.4 317.5 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "LT3652 MPPT Solar" (at 152.4 320.04 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_DFN_QFN:DFN-12-1EP_3x4mm_P0.5mm" (at 152.4 322.58 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; CONNECTORS
+  ;; ═══════════════════════════════════════════════════════════════
+
+  ;; USB-C
+  (symbol (lib_id "Connector:USB_C_Receptacle_USB2.0") (at 330.2 330.2 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "usb-c")
+    (property "Reference" "J3" (at 330.2 307.34 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "USB-C (Debug/FW Update)" (at 330.2 309.88 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4125" (at 330.2 312.42 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; SWD Debug Header
+  (symbol (lib_id "Connector_Generic:Conn_02x05_Odd_Even") (at 330.2 152.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "swd-header")
+    (property "Reference" "J4" (at 330.2 139.7 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "SWD Debug" (at 330.2 142.24 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_PinHeader_1.27mm:PinHeader_2x05_P1.27mm_Vertical_SMD" (at 330.2 144.78 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; CAN Bus Header
+  (symbol (lib_id "Connector_Generic:Conn_01x04") (at 203.2 269.24 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "can-header")
+    (property "Reference" "J5" (at 203.2 256.54 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "CAN Bus (CANH,CANL,+24V,GND)" (at 203.2 259.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" (at 203.2 261.62 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; RS485 Header
+  (symbol (lib_id "Connector_Generic:Conn_01x04") (at 203.2 228.6 180) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "rs485-header")
+    (property "Reference" "J6" (at 215.9 228.6 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "RS485 (A,B,+12V,GND)" (at 215.9 231.14 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" (at 203.2 233.68 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; Motor Connectors (4× BLDC)
+  (symbol (lib_id "Connector_Generic:Conn_01x06") (at 330.2 101.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "motor-conn")
+    (property "Reference" "J7" (at 330.2 88.9 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "Motor CAN + Power" (at 330.2 91.44 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_Molex:Molex_Mini-Fit_Jr_5566-06A_2x03_P4.20mm_Vertical" (at 330.2 93.98 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; DECOUPLING CAPACITORS (representative set)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Device:C") (at 127.0 55.88 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "c-decoup-1")
+    (property "Reference" "C1" (at 129.54 53.34 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "100nF" (at 129.54 58.42 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 127.0 60.96 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Device:C") (at 134.62 55.88 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "c-decoup-2")
+    (property "Reference" "C2" (at 137.16 53.34 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "4.7µF" (at 137.16 58.42 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Capacitor_SMD:C_0805_2012Metric" (at 134.62 60.96 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; I2C Pull-up Resistors
+  (symbol (lib_id "Device:R") (at 93.98 127.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "r-i2c-sda")
+    (property "Reference" "R1" (at 96.52 124.46 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "4.7kΩ" (at 96.52 129.54 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 93.98 132.08 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Device:R") (at 88.9 127.0 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "r-i2c-scl")
+    (property "Reference" "R2" (at 86.36 124.46 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "4.7kΩ" (at 86.36 129.54 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 88.9 132.08 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; CAN Termination Resistor
+  (symbol (lib_id "Device:R") (at 187.96 269.24 90) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "r-can-term")
+    (property "Reference" "R3" (at 187.96 264.16 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "120Ω" (at 187.96 266.7 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 187.96 271.78 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; RS485 Termination Resistor
+  (symbol (lib_id "Device:R") (at 187.96 228.6 90) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "r-rs485-term")
+    (property "Reference" "R4" (at 187.96 223.52 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "120Ω" (at 187.96 226.06 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Resistor_SMD:R_0603_1608Metric" (at 187.96 231.14 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; microSD Card Slot
+  (symbol (lib_id "Connector:Micro_SD_Card") (at 203.2 152.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "sd-card")
+    (property "Reference" "J8" (at 203.2 134.62 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "microSD" (at 203.2 137.16 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Connector_Card:microSD_HC_Molex_104031-0811" (at 203.2 139.7 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; STATUS LEDs
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Device:LED") (at 330.2 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "led-status")
+    (property "Reference" "D1" (at 332.74 187.96 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "GREEN (Status)" (at 332.74 193.04 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric" (at 330.2 195.58 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Device:LED") (at 340.36 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "led-error")
+    (property "Reference" "D2" (at 342.9 187.96 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "RED (Error)" (at 342.9 193.04 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric" (at 340.36 195.58 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Device:LED") (at 350.52 190.5 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "led-comms")
+    (property "Reference" "D3" (at 353.06 187.96 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "BLUE (Comms)" (at 353.06 193.04 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_0603_1608Metric" (at 350.52 195.58 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; Mounting holes
+  (symbol (lib_id "Mechanical:MountingHole") (at 370.84 25.4 0) (unit 1)
+    (in_bom no) (on_board yes) (dnp no)
+    (uuid "mh1")
+    (property "Reference" "MH1" (at 373.38 25.4 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "M3" (at 373.38 27.94 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "MountingHole:MountingHole_3.2mm_M3_Pad_Via" (at 370.84 30.48 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Mechanical:MountingHole") (at 381.0 25.4 0) (unit 1)
+    (in_bom no) (on_board yes) (dnp no)
+    (uuid "mh2")
+    (property "Reference" "MH2" (at 383.54 25.4 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "M3" (at 383.54 27.94 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "MountingHole:MountingHole_3.2mm_M3_Pad_Via" (at 381.0 30.48 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Mechanical:MountingHole") (at 391.16 25.4 0) (unit 1)
+    (in_bom no) (on_board yes) (dnp no)
+    (uuid "mh3")
+    (property "Reference" "MH3" (at 393.7 25.4 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "M3" (at 393.7 27.94 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "MountingHole:MountingHole_3.2mm_M3_Pad_Via" (at 391.16 30.48 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  (symbol (lib_id "Mechanical:MountingHole") (at 401.32 25.4 0) (unit 1)
+    (in_bom no) (on_board yes) (dnp no)
+    (uuid "mh4")
+    (property "Reference" "MH4" (at 403.86 25.4 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "M3" (at 403.86 27.94 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "MountingHole:MountingHole_3.2mm_M3_Pad_Via" (at 401.32 30.48 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; TEXT ANNOTATIONS (Net Labels)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (text "POWER SUPPLY SECTION" (at 50.8 254.0 0) (effects (font (size 2.54 2.54) bold)))
+  (text "MCU SECTION" (at 152.4 38.1 0) (effects (font (size 2.54 2.54) bold)))
+  (text "COMMUNICATION SECTION" (at 279.4 38.1 0) (effects (font (size 2.54 2.54) bold)))
+  (text "SENSOR INTERFACES" (at 50.8 38.1 0) (effects (font (size 2.54 2.54) bold)))
+  (text "BUS TRANSCEIVERS" (at 152.4 200.66 0) (effects (font (size 2.54 2.54) bold)))
+  (text "ANALOG ACQUISITION" (at 279.4 200.66 0) (effects (font (size 2.54 2.54) bold)))
+)
