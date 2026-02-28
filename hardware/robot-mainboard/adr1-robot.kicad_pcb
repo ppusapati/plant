@@ -233,6 +233,14 @@
   (gr_text "CAN/RS485" (at 130 80) (layer "F.SilkS")
     (effects (font (size 1.5 1.5) (thickness 0.2))))
 
+  ;; Component Grade: ALL ICs Industrial (-40°C to +85°C) or better
+  ;; SDRAM: IS42S16400J-7TLI (Industrial)
+  ;; 12V Buck: TPS54360BDDAR (Industrial, replaces XL4015)
+  ;; Ultrasonic: MB1240 XL-MaxSonar-EZ4 (Industrial, IP67, replaces HC-SR04)
+  ;; Camera: AR0234CS (Automotive -40°C to +105°C, replaces OV5640)
+  ;; LiDAR: TFmini-S-I (Industrial, replaces TFmini-S)
+  ;; Encoder: AS5047P (AEC-Q100 -40°C to +125°C, replaces E6B2-CWZ6C)
+  ;;
   ;; Design Rules
   ;; Min trace width: 0.15mm (signal), 0.3mm (power)
   ;; Min clearance: 0.15mm

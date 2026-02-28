@@ -1,27 +1,31 @@
-//! HC-SR04 Ultrasonic Sensor Driver
+//! MaxBotix MB1240 XL-MaxSonar-EZ4 Industrial Ultrasonic Driver
 //!
-//! 4× HC-SR04 sensors for obstacle detection:
-//! - Front (PE0/PE1): Forward obstacle detection
-//! - Right (PE2/PE3): Row tracking / lateral obstacle
-//! - Rear  (PE4/PE5): Reversing safety
-//! - Left  (PE6/PE7): Row tracking / lateral obstacle
+//! 4× MB1240 sensors for obstacle detection (Industrial grade, -40°C to +85°C, IP67):
+//! - Front (PE0): Forward obstacle detection
+//! - Right (PE2): Row tracking / lateral obstacle
+//! - Rear  (PE4): Reversing safety
+//! - Left  (PE6): Row tracking / lateral obstacle
 //!
-//! Uses GPIO trigger (10µs pulse) and timer capture for echo measurement.
-//! Distance = (echo_time_us × 0.0343) / 2 cm
+//! Supports analog voltage output (Vcc/1024 per cm) and UART serial output.
+//! Range: 20cm to 765cm, resolution: 1cm, accuracy: ±1cm.
 
 use defmt::*;
 
 /// Speed of sound at 20°C in cm/µs
 const SPEED_OF_SOUND_CM_US: f32 = 0.0343;
 
-/// Maximum detection range in cm
-const MAX_RANGE_CM: f32 = 400.0;
+/// Maximum detection range in cm (MB1240: 765cm)
+const MAX_RANGE_CM: f32 = 765.0;
 
-/// Minimum detection range in cm
-const MIN_RANGE_CM: f32 = 2.0;
+/// Minimum detection range in cm (MB1240: 20cm)
+const MIN_RANGE_CM: f32 = 20.0;
 
-/// Timeout for echo (max range ≈ 23ms round trip)
-const ECHO_TIMEOUT_US: u32 = 25_000;
+/// Timeout for echo (max range ≈ 45ms round trip at 765cm)
+const ECHO_TIMEOUT_US: u32 = 50_000;
+
+/// ADC voltage per centimeter (Vcc/1024 per cm for MB1240)
+/// At 3.3V Vcc: 3.3/1024 ≈ 3.222mV per cm
+const MV_PER_CM: f32 = 3.222;
 
 /// Ultrasonic sensor position
 #[derive(Debug, Clone, Copy, PartialEq, Eq, defmt::Format)]

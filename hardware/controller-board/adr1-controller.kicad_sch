@@ -61,7 +61,7 @@
     (in_bom yes) (on_board yes) (dnp no)
     (uuid "ctrl-display")
     (property "Reference" "J1" (at 50.8 71.12 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "ILI9488 TFT 480x320" (at 50.8 73.66 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "NHD-3.5-320240MF-ATXI#-1 (Industrial -30/+80°C)" (at 50.8 73.66 0) (effects (font (size 1.27 1.27))))
     (property "Footprint" "Connector_FFC-FPC:FFC-FPC_14Pin_0.5mm_Horizontal" (at 50.8 76.2 0) (effects (font (size 1.27 1.27)) hide))
   )
 
@@ -217,13 +217,13 @@
     (property "Footprint" "Buzzer_Beeper:Buzzer_8.5x8.5mm" (at 294.64 187.96 0) (effects (font (size 1.27 1.27)) hide))
   )
 
-  ;; WS2812B LEDs (×4)
-  (symbol (lib_id "LED:WS2812B") (at 294.64 127.0 0) (unit 1)
+  ;; APA102-2020 LEDs (×4) Industrial (-40°C to +85°C)
+  (symbol (lib_id "LED:APA102-2020") (at 294.64 127.0 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid "ctrl-led-1")
     (property "Reference" "D1" (at 294.64 119.38 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "WS2812B-2020 (Status)" (at 294.64 121.92 0) (effects (font (size 1.27 1.27))))
-    (property "Footprint" "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (at 294.64 124.46 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Value" "APA102-2020-8 (Status, Industrial)" (at 294.64 121.92 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "LED_SMD:LED_APA102-2020_2.0x2.0mm" (at 294.64 124.46 0) (effects (font (size 1.27 1.27)) hide))
   )
 
   ;; LiPo Battery Connector

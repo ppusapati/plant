@@ -43,13 +43,13 @@
      │      │                                                      │
      │      ├──────────────┬──────────────┬───────────────┐       │
      │      │              │              │               │       │
-     │  ┌───▼───┐     ┌───▼───┐     ┌───▼───┐     ┌────▼────┐  │
-     │  │24V Bus│     │12V    │     │5V     │     │3.3V     │  │
-     │  │Direct │     │XL4015 │     │LM2596 │     │TPS563200│  │
-     │  │to BLDC│     │Buck   │     │Buck   │     │Buck     │  │
-     │  │Drivers│     │24→12V │     │24→5V  │     │5→3.3V   │  │
-     │  │       │     │3A     │     │5A     │     │2A       │  │
-     │  └───┬───┘     └───┬───┘     └───┬───┘     └────┬────┘  │
+     │  ┌───▼───┐     ┌────▼────┐   ┌───▼───┐     ┌────▼────┐  │
+     │  │24V Bus│     │12V      │   │5V     │     │3.3V     │  │
+     │  │Direct │     │TPS54360B│   │LM2596S│     │TPS563200│  │
+     │  │to BLDC│     │Buck     │   │Buck   │     │Buck     │  │
+     │  │Drivers│     │24→12V   │   │24→5V  │     │5→3.3V   │  │
+     │  │       │     │3.5A Ind │   │5A Ind │     │2A Ind   │  │
+     │  └───┬───┘     └────┬────┘   └───┬───┘     └────┬────┘  │
      │      │              │              │               │       │
      │      │         ┌────┘         ┌────┘          ┌────┘      │
      │      │         │              │               │            │
@@ -137,7 +137,7 @@
  │ UART3 (PB10/PB11) ──── ESP32-S3 (AT commands / custom protocol)     │
  │                         921600 baud                                  │
  │                                                                      │
- │ UART5 (PD2/PC12) ─────── TFmini-S LiDAR                            │
+ │ UART5 (PD2/PC12) ─────── TFmini-S-I LiDAR (Industrial)             │
  │                           115200 baud                                │
  │                                                                      │
  │ SPI1 (PA5/PA6/PA7) ────── SX1276 LoRa Module                       │
@@ -174,22 +174,22 @@
  │                       │  VDD=3.3V │                 │ To Motor      │
  │                       └───────────┘                 │ Controllers   │
  │                                                     │ & BMS         │
- │ TIM1 (PA8, Encoder Mode) ── Wheel Encoder FL       └───────────    │
- │ TIM2 (PA0, Encoder Mode) ── Wheel Encoder FR                       │
- │ TIM3 (PA6, Encoder Mode) ── Wheel Encoder RL                       │
- │ TIM4 (PB6, Encoder Mode) ── Wheel Encoder RR                       │
+ │ SPI4 (PE2-5, AS5047P) ── Magnetic Encoder FL (AEC-Q100)             │
+ │ SPI5 (PF7-9, AS5047P) ── Magnetic Encoder FR (-40°C to +125°C)    │
+ │ SPI6 (PG12-14, AS5047P)── Magnetic Encoder RL (4096 CPR)           │
+ │ TIM4 (PB6, ABI mode)  ── Magnetic Encoder RR (AS5047P ABI out)    │
  │                                                                      │
  │ TIM8 (PC6/PC7/PC8/PC9) ── PWM for Servo Motors                     │
  │   CH1: Probe deploy servo                                           │
  │   CH2: Probe tilt servo                                             │
  │                                                                      │
- │ GPIO (Ultrasonic HC-SR04):                                          │
- │   PE0/PE1: TRIG/ECHO Sensor 1 (Front)                              │
- │   PE2/PE3: TRIG/ECHO Sensor 2 (Right)                              │
- │   PE4/PE5: TRIG/ECHO Sensor 3 (Rear)                               │
- │   PE6/PE7: TRIG/ECHO Sensor 4 (Left)                               │
+ │ Analog/UART (MaxBotix MB1240 Industrial IP67, -40°C to +85°C):      │
+ │   PE0: Sensor 1 Analog (Front)                                      │
+ │   PE2: Sensor 2 Analog (Right)                                      │
+ │   PE4: Sensor 3 Analog (Rear)                                       │
+ │   PE6: Sensor 4 Analog (Left)                                       │
  │                                                                      │
- │ DCMI (PE0-PE15 shared) ── OV5640 Camera (NDVI)                     │
+ │ DCMI (PE0-PE15 shared) ── AR0234CS Camera (NDVI, Industrial)       │
  │   D0-D7, HSYNC, VSYNC, PCLK, XCLK                                 │
  │                                                                      │
  │ 1-Wire (PB1, software bit-bang) ── DS18B20 Soil Temp               │
@@ -350,7 +350,7 @@
                                                                 GND
 
     Shunt Current Sensing (if custom driver):
-    Phase A ── 10mΩ ── ACS712 ── ADC
+    Phase A ── 10mΩ ── ACS712ELCTR-20A ── ADC (Industrial -40°C to +85°C)
                        0.1V/A
 ```
 
@@ -397,8 +397,9 @@
                     HANDHELD CONTROLLER CIRCUIT
 ═══════════════════════════════════════════════════════════════════════════
 
-    USB-C ──── MCP73871 ──── LiPo 3.7V ──── TPS63020 ──── 3.3V Rail
-    5V input   Charge IC    3000mAh         Buck-Boost     System
+    USB-C ──── MCP73871-2CCI ── LiPo 3.7V ──── TPS63020 ──── 3.3V Rail
+    5V input   Charge+LoadShare  3000mAh       Buck-Boost     System
+               Industrial(-40/+85°C)           Industrial(-40/+85°C)
 
     3.3V Rail ──┬──────────────────────────────────────────────────┐
                 │                                                   │
@@ -443,7 +444,7 @@
          │  GPIO43 ── DRV2605L SDA (I2C, haptic)          │       │
          │  GPIO44 ── DRV2605L SCL                         │       │
          │                                                  │       │
-         │  GPIO45 ── WS2812B Data (4 LEDs daisy-chain)    │       │
+         │  GPIO45 ── APA102 Data (4 LEDs, SPI, Industrial) │       │
          │  GPIO46 ── Buzzer (PWM)                         │       │
          │  GPIO47 ── Battery ADC (voltage divider)        │       │
          │  GPIO48 ── SD Card CS (SPI shared with display) │       │

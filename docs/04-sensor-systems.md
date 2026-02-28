@@ -62,10 +62,10 @@
 
 | Parameter | Specification |
 |-----------|--------------|
-| Implementation | Dual OV5640 cameras with optical filters |
+| Implementation | Dual onsemi AR0234CS cameras with optical filters (Industrial -40°C to +105°C) |
 | Red filter | Hoya R-62 (620nm bandpass) |
 | NIR filter | Hoya IR-72 (720nm longpass) |
-| Resolution | 2592×1944 (5MP) downsampled to 640×480 |
+| Resolution | 1920×1200 (2.3MP) downsampled to 640×480 |
 | Frame rate | 5 fps (synchronized) |
 | Interface | DCMI (Digital Camera Interface) on STM32H7 |
 | FOV | 60° diagonal (covers 400mm at 300mm height) |
@@ -123,7 +123,7 @@ Camera Mounting:
 
 | Parameter | Specification |
 |-----------|--------------|
-| Sensor | TFmini-S LiDAR |
+| Sensor | TFmini-S-I LiDAR (Industrial, -40°C to +65°C, IP65) |
 | Range | 0.1m to 12m |
 | Accuracy | ±1cm at 0.1-6m |
 | Update rate | 100 Hz (set to 10 Hz for power saving) |
@@ -363,7 +363,7 @@ Deployment Sequence:
 | Heading accuracy | ±2.5° (after calibration) |
 | Operating mode | NDOF (Nine Degrees of Freedom fusion) |
 
-### 5.2 Ultrasonic Obstacle Detection (HC-SR04 × 4)
+### 5.2 Industrial Ultrasonic Obstacle Detection (MaxBotix MB1240 × 4)
 
 ```
 Sensor Placement (Top View):
@@ -386,21 +386,27 @@ US4: Left side (270°)     - Row tracking
 
 | Parameter | Specification |
 |-----------|--------------|
-| Range | 2cm - 400cm |
-| Accuracy | ±3mm |
-| Beam angle | 15° cone |
-| Interface | GPIO trigger + echo (timer capture) |
+| Model | MaxBotix MB1240 XL-MaxSonar-EZ4 (Industrial) |
+| Temp range | -40°C to +85°C (Industrial grade) |
+| Protection | IP67 weatherproof |
+| Range | 20cm - 765cm |
+| Accuracy | ±1cm |
+| Beam angle | Wide beam pattern, calibrated |
+| Interface | Analog voltage / UART / Pulse width |
 | Scan rate | 10 Hz per sensor (40 Hz total, round-robin) |
 
-### 5.3 Wheel Encoders
+### 5.3 Wheel Encoders (Industrial Magnetic)
 
 | Parameter | Specification |
 |-----------|--------------|
-| Type | Incremental optical encoder |
-| Resolution | 600 PPR (2400 CPR with quadrature) |
-| Interface | STM32 Timer in encoder mode (TIM1-TIM4) |
-| Odometry | Distance = (pulses / CPR) × π × wheel_diameter |
+| Model | ams AS5047P (AEC-Q100 Automotive qualified) |
+| Type | Contactless magnetic rotary encoder |
+| Temp range | -40°C to +125°C |
+| Resolution | 4096 steps/rev (14-bit), 4096 CPR |
+| Interface | SPI (primary) or ABI quadrature output |
+| Odometry | Distance = (steps / 4096) × π × wheel_diameter |
 | Update rate | Continuous, sampled at 100 Hz |
+| Advantage | No mechanical wear, IP rated, vibration immune |
 
 ---
 
@@ -487,9 +493,9 @@ US4: Left side (270°)     - Row tracking
 | NavIC GNSS | 10 Hz | Critical | UART4 | 30 |
 | BNO055 IMU | 100 Hz | Critical | I2C1 | 12 |
 | Wheel encoders | 100 Hz | Critical | TIM1-4 | 0 |
-| HC-SR04 ×4 | 10 Hz each | High | GPIO | 75 |
-| TFmini-S LiDAR | 10 Hz | High | UART5 | 120 |
-| NDVI Camera | 5 Hz | Medium | DCMI+SPI | 250 |
+| MB1240 ×4 (Industrial) | 10 Hz each | High | Analog/UART | 120 |
+| TFmini-S-I LiDAR (Ind.)| 10 Hz | High | UART5 | 120 |
+| NDVI Camera (AR0234CS) | 5 Hz | Medium | DCMI+SPI | 300 |
 | MLX90614 IR | 10 Hz | Medium | I2C1 | 8 |
 | BME280 | 1 Hz | Low | I2C1 | 0.004 |
 | BH1750 | 1 Hz | Low | I2C1 | 0.2 |

@@ -167,7 +167,7 @@ async fn display_task() {
 #[embassy_executor::task]
 async fn status_led_task() {
     loop {
-        // WS2812B LED patterns based on state:
+        // APA102-2020 LED patterns via SPI (Industrial -40°C to +85°C):
         // Green pulse: Normal operation
         // Blue pulse: Receiving telemetry
         // Yellow: Degraded link

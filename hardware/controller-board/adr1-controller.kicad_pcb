@@ -158,6 +158,11 @@
   (gr_text "ADR-1 CONTROLLER v1.0" (at 70 3) (layer "F.SilkS")
     (effects (font (size 1.5 1.5) (thickness 0.2) bold)))
 
+  ;; Component Grade: ALL ICs Industrial (-40°C to +85°C) or better
+  ;; Display: NHD-3.5-320240MF-ATXI#-1 (Industrial -30°C to +80°C)
+  ;; LEDs: APA102-2020 (Industrial -40°C to +85°C, replaces WS2812B)
+  ;; Charger: MCP73871-2CCI only (TP4056 removed)
+
   ;; LoRa Antenna Keep-Out Zone (bottom edge, 40×15mm)
   (gr_rect (start 50 65) (end 90 80)
     (stroke (width 0.2) (type dash)) (fill none) (layer "Dwgs.User"))

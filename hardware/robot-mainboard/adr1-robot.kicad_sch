@@ -223,26 +223,38 @@
   )
 
   ;; ═══════════════════════════════════════════════════════════════
-  ;; QSPI FLASH - W25Q128
+  ;; QSPI FLASH - W25Q128 Industrial (-40°C to +85°C)
   ;; ═══════════════════════════════════════════════════════════════
 
   (symbol (lib_id "Memory_Flash:W25Q128JVS") (at 203.2 76.2 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid "flash-w25q128")
     (property "Reference" "U14" (at 203.2 63.5 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "W25Q128JVSIQ" (at 203.2 66.04 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "W25Q128JVSIQ (Industrial)" (at 203.2 66.04 0) (effects (font (size 1.27 1.27))))
     (property "Footprint" "Package_SO:SOIC-8_5.23x5.23mm_P1.27mm" (at 203.2 68.58 0) (effects (font (size 1.27 1.27)) hide))
   )
 
   ;; ═══════════════════════════════════════════════════════════════
-  ;; POWER SUPPLY - LM2596 (24V→5V)
+  ;; SDRAM - IS42S16400J Industrial (-40°C to +85°C)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Memory_RAM:IS42S16400J") (at 203.2 101.6 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "sdram-is42s16400j")
+    (property "Reference" "U19" (at 203.2 88.9 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "IS42S16400J-7TLI (Industrial)" (at 203.2 91.44 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:TSOP-II-54_22.2x10.16mm_P0.8mm" (at 203.2 93.98 0) (effects (font (size 1.27 1.27)) hide))
+  )
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER SUPPLY - LM2596S (24V→5V) Industrial (-40°C to +125°C Tj)
   ;; ═══════════════════════════════════════════════════════════════
 
   (symbol (lib_id "Regulator_Switching:LM2596S-5") (at 50.8 279.4 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid "buck-5v")
     (property "Reference" "U15" (at 50.8 266.7 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "LM2596S-5.0 (24V→5V)" (at 50.8 269.24 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "LM2596S-5.0 (24V→5V) Industrial" (at 50.8 269.24 0) (effects (font (size 1.27 1.27))))
     (property "Footprint" "Package_TO_SOT_SMD:TO-263-5_TabPin3" (at 50.8 271.78 0) (effects (font (size 1.27 1.27)) hide))
   )
 
@@ -459,6 +471,18 @@
   ;; ═══════════════════════════════════════════════════════════════
   ;; TEXT ANNOTATIONS (Net Labels)
   ;; ═══════════════════════════════════════════════════════════════
+
+  ;; ═══════════════════════════════════════════════════════════════
+  ;; POWER SUPPLY - TPS54360B (24V→12V) Industrial (-40°C to +150°C Tj)
+  ;; ═══════════════════════════════════════════════════════════════
+
+  (symbol (lib_id "Regulator_Switching:TPS54360B") (at 152.4 279.4 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid "buck-12v")
+    (property "Reference" "U20" (at 152.4 266.7 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "TPS54360BDDAR (24V→12V) Industrial" (at 152.4 269.24 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_SO:HSOP-8-1EP_3.9x4.9mm_P1.27mm" (at 152.4 271.78 0) (effects (font (size 1.27 1.27)) hide))
+  )
 
   (text "POWER SUPPLY SECTION" (at 50.8 254.0 0) (effects (font (size 2.54 2.54) bold)))
   (text "MCU SECTION" (at 152.4 38.1 0) (effects (font (size 2.54 2.54) bold)))
