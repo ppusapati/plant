@@ -35,8 +35,8 @@
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │                    Dedicated Interfaces                       │   │
 │  │  ┌────────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐  │   │
-│  │  │NDVI Camera │ │TFmini-S  │ │HC-SR04 x4  │ │DS18B20   │  │   │
-│  │  │SPI+GPIO    │ │UART      │ │GPIO Trigger │ │1-Wire    │  │   │
+│  │  │NDVI Camera │ │TFmini-S-I│ │MB1240 x4   │ │DS18B20   │  │   │
+│  │  │SPI+GPIO    │ │UART      │ │Analog/UART │ │1-Wire    │  │   │
 │  │  └────────────┘ └──────────┘ └────────────┘ └──────────┘  │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
@@ -134,7 +134,7 @@ Camera Mounting:
 ```
 Plant Height Calculation:
                     ┌──────────┐
-                    │ TFmini-S │ Mounted on chassis, downward
+                    │TFmini-S-I│ Mounted on chassis, downward (Industrial)
                     └────┬─────┘
                          │ d1 = distance to plant top
                          ▼

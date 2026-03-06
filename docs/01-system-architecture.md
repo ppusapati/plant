@@ -20,7 +20,7 @@ The Autonomous Deseeder Robot (ADR-1) is a field-deployable agricultural robot d
 │                                                                         │
 │  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐              │
 │  │ NavIC/GPS │  │ IMU 9DOF │  │ LiDAR     │  │ Ultrasonic│              │
-│  │ Module   │  │ BNO055   │  │ TFmini-S  │  │ HC-SR04x4 │              │
+│  │ Module   │  │ BNO055   │  │ TFmini-S-I│  │ MB1240 x4 │              │
 │  └────┬─────┘  └────┬─────┘  └─────┬─────┘  └─────┬─────┘              │
 │       │              │              │              │                     │
 │       ├──────────────┼──────────────┼──────────────┘                     │
@@ -96,7 +96,7 @@ The Autonomous Deseeder Robot (ADR-1) is a field-deployable agricultural robot d
 | NDVI | Dual-band camera (Red + NIR) | 0.0-1.0 | ±0.02 |
 | Leaf temperature | MLX90614 IR thermometer | -40 to 125°C | ±0.5°C |
 | Canopy coverage | Downward RGB camera | 0-100% | ±5% |
-| Plant height | TFmini-S LiDAR | 0.1-12m | ±1cm |
+| Plant height | TFmini-S-I LiDAR (Industrial) | 0.1-12m | ±1cm |
 | Disease detection | Multispectral analysis | RGB+NIR | Visual AI |
 
 ### 3.3 Soil Health Monitoring
@@ -129,7 +129,7 @@ The Autonomous Deseeder Robot (ADR-1) is a field-deployable agricultural robot d
 | Update rate | 10 Hz navigation solution |
 | IMU | BNO055 9-DOF (accel+gyro+mag) |
 | Odometry | Wheel encoders (600 PPR per wheel) |
-| Obstacle avoidance | 4x HC-SR04 ultrasonic + TFmini-S LiDAR |
+| Obstacle avoidance | 4x MB1240 ultrasonic (Industrial IP67) + TFmini-S-I LiDAR |
 
 ### 3.6 Communication Links
 | Link | Technology | Range | Data Rate | Purpose |
