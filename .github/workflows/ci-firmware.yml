@@ -77,11 +77,11 @@ jobs:
           cargo install espup --locked
           espup install --targets esp32s3
           # shellcheck source=/dev/null
-          if [ ! -f "$HOME/.espup/export-esp.sh" ]; then
-            echo "ERROR: espup did not generate $HOME/.espup/export-esp.sh" >&2
+          if [ ! -f "$HOME/.espup/export.sh" ]; then
+            echo "ERROR: espup did not generate $HOME/.espup/export.sh" >&2
             exit 1
           fi
-          . "$HOME/.espup/export-esp.sh"
+          . "$HOME/.espup/export.sh"
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           echo "LIBCLANG_PATH=$LIBCLANG_PATH" >> "$GITHUB_ENV"
           echo "CLANG_PATH=$CLANG_PATH" >> "$GITHUB_ENV"
