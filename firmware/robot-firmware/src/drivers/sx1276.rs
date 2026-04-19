@@ -140,7 +140,7 @@ pub struct Sx1276<SPI> {
 
 impl<SPI> Sx1276<SPI>
 where
-    SPI: embedded_hal::spi::SpiDevice,
+    SPI: embedded_hal::spi::SpiBus,
 {
     pub fn new(spi: SPI, cs: Output<'static>, reset: Output<'static>) -> Self {
         Self {
@@ -150,6 +150,91 @@ where
             config: LoRaConfig::default(),
             seq_counter: 0,
         }
+    }
+
+    /// Initialize the SX1276 with the given configuration.
+    ///
+    /// Performs a hardware reset, verifies the chip version register
+    /// (expects 0x12), then programs all modem parameters.
+    pub async fn init(&mut self, config: LoRaConfig) {
+        // Hardware reset: pull RESET low for 1 ms, then release and wait 5 ms
+        self.reset.set_low();
+        Timer::after(Duration::from_millis(1)).await;
+        self.reset.set_high();
+        Timer::after(Duration::from_millis(5)).await;
+
+        // Verify chip version
+        let version = self.read_register(reg::VERSION);
+        if version != 0x12 {
+            error!("SX1276: unexpected version 0x{:02X} (expected 0x12)", version);
+        } else {
+            info!("SX1276: chip version OK (0x12)");
+        }
+
+        // Enter sleep mode to allow changing LoRa/FSK mode bit
+        self.write_register(reg::OP_MODE, 0x00); // Sleep, FSK/OOK
+        Timer::after(Duration::from_millis(1)).await;
+        // Switch to LoRa mode, remain in sleep
+        self.write_register(reg::OP_MODE, 0x80); // Sleep, LoRa
+        Timer::after(Duration::from_millis(1)).await;
+
+        // Set frequency
+        self.config = config;
+        let frf = ((self.config.frequency_hz as u64) << 19) / 32_000_000;
+        self.write_register(reg::FR_MSB, (frf >> 16) as u8);
+        self.write_register(reg::FR_MID, (frf >> 8) as u8);
+        self.write_register(reg::FR_LSB, frf as u8);
+
+        // PA config: PA_BOOST, max power, output power
+        let pa_config = 0x80 | ((self.config.tx_power_dbm as u8).saturating_sub(2) & 0x0F);
+        self.write_register(reg::PA_CONFIG, pa_config);
+
+        // Over-current protection: enabled, 140 mA
+        self.write_register(reg::OCP, 0x3B);
+
+        // LNA: max gain, boost on
+        self.write_register(reg::LNA, 0x23);
+
+        // Modem config 1: bandwidth, coding rate, implicit header off
+        let bw_cr = ((self.config.bandwidth as u8) << 4)
+            | ((self.config.coding_rate as u8) << 1);
+        self.write_register(reg::MODEM_CONFIG_1, bw_cr);
+
+        // Modem config 2: spreading factor, TX continuous off, CRC on
+        let mc2 = ((self.config.spreading_factor as u8) << 4) | 0x04;
+        self.write_register(reg::MODEM_CONFIG_2, mc2);
+
+        // Modem config 3: LDRO auto, AGC enabled
+        self.write_register(reg::MODEM_CONFIG_3, 0x04);
+
+        // Preamble length
+        self.write_register(reg::PREAMBLE_MSB, (self.config.preamble_length >> 8) as u8);
+        self.write_register(reg::PREAMBLE_LSB, self.config.preamble_length as u8);
+
+        // Sync word (0xAD for ADR-1 network)
+        self.write_register(reg::SYNC_WORD, self.config.sync_word);
+
+        // FIFO base addresses
+        self.write_register(reg::FIFO_TX_BASE, 0x00);
+        self.write_register(reg::FIFO_RX_BASE, 0x00);
+
+        // PA DAC for +20 dBm mode
+        if self.config.tx_power_dbm >= 20 {
+            self.write_register(reg::PA_DAC, 0x87);
+        }
+
+        // Enter standby
+        self.set_mode(0x01);
+        info!(
+            "SX1276: initialized @ {} Hz, SF{}, BW={} kHz",
+            self.config.frequency_hz,
+            self.config.spreading_factor as u8,
+            match self.config.bandwidth {
+                Bandwidth::Bw125kHz => 125,
+                Bandwidth::Bw250kHz => 250,
+                Bandwidth::Bw500kHz => 500,
+            }
+        );
     }
 
     /// Read a single register

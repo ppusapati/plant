@@ -25,6 +25,7 @@ panic-probe = { version = "0.3", features = ["print-defmt"] }
 # HAL and driver crates
 embedded-hal = "1.0"
 embedded-hal-async = "1.0"
+embedded-hal-bus = "0.2"
 embedded-io-async = "0.6"
 
 # Sensor drivers
