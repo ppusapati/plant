@@ -1,0 +1,96 @@
+name: CI – Firmware
+
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - 'tools/protocol-tests/**'
+      - '.github/workflows/ci-firmware.yml'
+  pull_request:
+    paths:
+      - 'firmware/**'
+      - 'tools/protocol-tests/**'
+      - '.github/workflows/ci-firmware.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Protocol host tests (no hardware required) ────────────────────────
+  protocol-tests:
+    name: Protocol tests (host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tools/protocol-tests/target
+          key: ${{ runner.os }}-protocol-tests-${{ hashFiles('tools/protocol-tests/Cargo.lock') }}
+
+      - name: Run protocol tests
+        working-directory: tools/protocol-tests
+        run: cargo test --release
+
+  # ── Robot firmware build check (STM32H743) ───────────────────────────
+  robot-firmware:
+    name: Robot firmware (STM32H743)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust nightly + ARM target
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: thumbv7em-none-eabihf
+          components: rust-src
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            firmware/robot-firmware/target
+          key: ${{ runner.os }}-robot-fw-${{ hashFiles('firmware/robot-firmware/Cargo.lock') }}
+
+      - name: cargo check
+        working-directory: firmware/robot-firmware
+        run: cargo check --target thumbv7em-none-eabihf --release
+
+  # ── Controller firmware build check (ESP32-S3) ───────────────────────
+  controller-firmware:
+    name: Controller firmware (ESP32-S3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install espup
+        run: |
+          cargo install espup --locked
+          espup install --targets esp32s3
+          # shellcheck source=/dev/null
+          . "$HOME/export-esp.sh"
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          echo "LIBCLANG_PATH=$LIBCLANG_PATH" >> "$GITHUB_ENV"
+          echo "CLANG_PATH=$CLANG_PATH" >> "$GITHUB_ENV"
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            firmware/controller-firmware/target
+          key: ${{ runner.os }}-ctrl-fw-${{ hashFiles('firmware/controller-firmware/Cargo.lock') }}
+
+      - name: cargo check
+        working-directory: firmware/controller-firmware
+        run: cargo check --release

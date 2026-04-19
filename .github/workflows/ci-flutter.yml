@@ -1,0 +1,44 @@
+name: CI – Flutter
+
+on:
+  push:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/ci-flutter.yml'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/ci-flutter.yml'
+
+jobs:
+  flutter:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: stable
+
+      - name: Install dependencies
+        working-directory: mobile/adr1_controller
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: mobile/adr1_controller
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Run tests
+        working-directory: mobile/adr1_controller
+        run: flutter test --coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: mobile/adr1_controller/coverage/lcov.info
+          flags: flutter
+        continue-on-error: true

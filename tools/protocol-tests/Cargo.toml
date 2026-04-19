@@ -1,0 +1,10 @@
+[package]
+name = "protocol-tests"
+version = "0.1.0"
+edition = "2021"
+description = "Host-side tests for ADR-1 protocol logic (CRC, packet encode/decode, health score)"
+license = "MIT"
+
+[dependencies]
+
+[dev-dependencies]
