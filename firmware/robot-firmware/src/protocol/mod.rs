@@ -22,6 +22,7 @@ pub const ADDR_BROADCAST: u8 = 0xFF;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, defmt::Format)]
 #[repr(u8)]
 pub enum MessageId {
+    Ping = 0x00,
     Heartbeat = 0x01,
     Telemetry = 0x02,
     PlantHealth = 0x03,
@@ -120,6 +121,7 @@ impl Packet {
         }
 
         let msg_id = match msg_id_raw {
+            0x00 => MessageId::Ping,
             0x01 => MessageId::Heartbeat,
             0x02 => MessageId::Telemetry,
             0x03 => MessageId::PlantHealth,

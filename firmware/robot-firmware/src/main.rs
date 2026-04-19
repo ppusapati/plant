@@ -15,11 +15,18 @@
 
 use defmt::*;
 use defmt_rtt as _;
+use core::sync::atomic::{AtomicU8, Ordering};
 use embassy_executor::Spawner;
+use embassy_stm32::can::{Fdcan, FdcanTx, FdcanRx};
+use embassy_stm32::can::frame::{ClassicFrame, Header};
+use embassy_stm32::can::{StandardId, Id};
 use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
 use embassy_stm32::i2c::{self, I2c};
 use embassy_stm32::spi::{self, Spi};
 use embassy_stm32::time::Hertz;
+use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
+use embassy_stm32::timer::{Channel, CountingMode};
+use embassy_stm32::gpio::OutputType;
 use embassy_stm32::usart::{self, Uart};
 use embassy_stm32::{bind_interrupts, peripherals};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
@@ -64,6 +71,18 @@ type LoraSpi = Spi<'static, peripherals::SPI1, peripherals::DMA2_CH0, peripheral
 /// Sx1276 driver using raw SpiBus + separate CS/RESET pins
 type LoraRadio = Sx1276<LoraSpi>;
 
+/// FDCAN1 transmit half — drives 4× BLDC motor controllers + deseeder (PD0 RX, PD1 TX, AF3)
+type CanTx = FdcanTx<'static, peripherals::FDCAN1>;
+
+/// FDCAN1 receive half — listens for BMS status, motor feedback
+type CanRx = FdcanRx<'static, peripherals::FDCAN1>;
+
+/// TIM3 PWM — BTS7960 deseeder H-bridge (PB4 = R_PWM CH1, PB5 = L_PWM CH2, 10 kHz)
+type DeseedPwm = SimplePwm<'static, peripherals::TIM3>;
+
+/// TIM4 PWM — Soil probe servos (PD12 = servo A CH1, PD13 = servo B CH2, 50 Hz)
+type ServoPwm = SimplePwm<'static, peripherals::TIM4>;
+
 // ─── Inter-task communication channels ───────────────────────────────
 
 /// Fused navigation state (GNSS + IMU + odometry) — updated when GNSS fixes arrive
@@ -83,6 +102,12 @@ static ESTOP_SIGNAL: Signal<ThreadModeRawMutex, bool> = Signal::new();
 
 /// Robot operating mode (set by comms task from controller commands)
 static MODE_SIGNAL: Signal<ThreadModeRawMutex, RobotMode> = Signal::new();
+
+/// Current mode as atomic byte — readable by any task without consuming the signal
+static CURRENT_MODE_ATOMIC: AtomicU8 = AtomicU8::new(0); // 0 = RobotMode::Idle
+
+/// Battery state of charge 0–100 % (written by can_rx_task from BMS CAN frames)
+static BATTERY_SOC_ATOMIC: AtomicU8 = AtomicU8::new(0);
 
 // ─── Interrupt bindings ──────────────────────────────────────────────
 
@@ -185,6 +210,39 @@ async fn main(spawner: Spawner) {
     let lora_reset = Output::new(p.PB0, Level::High, Speed::High);
     let radio = Sx1276::new(lora_spi, lora_cs, lora_reset);
 
+    // ─── FDCAN1 → CAN bus (4× BLDC + deseeder controller + BMS) ─────
+    // PD0 = FDCAN1_RX (AF3), PD1 = FDCAN1_TX (AF3)
+    // Default bit timing: 1 Mbit/s with 60 MHz FDCAN kernel clock (PLL1_Q ÷ 8 × 8 = 60 MHz)
+    let (can_tx, can_rx) = Fdcan::new(p.FDCAN1, p.PD0, p.PD1, Irqs)
+        .into_normal_mode()
+        .split();
+
+    // ─── TIM3 PWM → BTS7960 deseeder H-bridge ────────────────────────
+    // PB4 = TIM3_CH1 (R_PWM, forward),  PB5 = TIM3_CH2 (L_PWM, reverse)
+    // 10 kHz: above audible range, within BTS7960 20 kHz limit
+    let deseeder_pwm = SimplePwm::new(
+        p.TIM3,
+        Some(PwmPin::new_ch1(p.PB4, OutputType::PushPull)),
+        Some(PwmPin::new_ch2(p.PB5, OutputType::PushPull)),
+        None,
+        None,
+        Hertz(10_000),
+        CountingMode::EdgeAlignedUp,
+    );
+
+    // ─── TIM4 PWM → Soil probe servos ────────────────────────────────
+    // PD12 = TIM4_CH1 (probe A),  PD13 = TIM4_CH2 (probe B)
+    // Standard RC servo frequency: 50 Hz (20 ms period)
+    let servo_pwm = SimplePwm::new(
+        p.TIM4,
+        Some(PwmPin::new_ch1(p.PD12, OutputType::PushPull)),
+        Some(PwmPin::new_ch2(p.PD13, OutputType::PushPull)),
+        None,
+        None,
+        Hertz(50),
+        CountingMode::EdgeAlignedUp,
+    );
+
     // ─── Spawn subsystem tasks ────────────────────────────────────────
     spawner.must_spawn(heartbeat_task(led_status));
     spawner.must_spawn(safety_task(led_error));
@@ -193,7 +251,8 @@ async fn main(spawner: Spawner) {
     spawner.must_spawn(sensor_task(rs485_uart, rs485_de, i2c1));
     spawner.must_spawn(navigation_task());
     spawner.must_spawn(comms_task(radio));
-    spawner.must_spawn(motor_control_task());
+    spawner.must_spawn(can_rx_task(can_rx));
+    spawner.must_spawn(motor_control_task(can_tx, deseeder_pwm, servo_pwm));
 
     info!("ADR-1 Robot Firmware initialized — all tasks spawned");
 
@@ -539,7 +598,8 @@ async fn comms_task(mut radio: LoraRadio) {
                         let _ = COMMAND_CHANNEL.try_send(cmd);
                     }
                     MessageId::ModeCommand if !pkt.payload.is_empty() => {
-                        let new_mode = match pkt.payload[0] {
+                        let mode_byte = pkt.payload[0];
+                        let new_mode = match mode_byte {
                             0 => RobotMode::Idle,
                             1 => RobotMode::Manual,
                             2 => RobotMode::Autonomous,
@@ -552,6 +612,7 @@ async fn comms_task(mut radio: LoraRadio) {
                             6 => RobotMode::SoilSampling,
                             _ => RobotMode::Idle,
                         };
+                        CURRENT_MODE_ATOMIC.store(mode_byte, Ordering::Relaxed);
                         MODE_SIGNAL.signal(new_mode);
                     }
                     MessageId::Emergency => {
@@ -559,8 +620,10 @@ async fn comms_task(mut radio: LoraRadio) {
                         ESTOP_SIGNAL.signal(true);
                     }
                     MessageId::Ping => {
-                        // ACK with a heartbeat packet
-                        let ack = mgr.build_heartbeat(0, 100);
+                        // Respond with a heartbeat carrying the current mode and SoC
+                        let mode_val = CURRENT_MODE_ATOMIC.load(Ordering::Relaxed);
+                        let soc_val  = BATTERY_SOC_ATOMIC.load(Ordering::Relaxed);
+                        let ack = mgr.build_heartbeat(mode_val, soc_val);
                         let ack_len = ack.serialize(&mut tx_buf);
                         radio.transmit(&tx_buf[..ack_len]);
                         radio.start_receive();
@@ -623,7 +686,9 @@ async fn comms_task(mut radio: LoraRadio) {
         // ── Periodic: Heartbeat at 1 Hz ───────────────────────────────
         if now_ms.saturating_sub(last_heartbeat_ms) >= HEARTBEAT_INTERVAL_MS {
             last_heartbeat_ms = now_ms;
-            let hb = mgr.build_heartbeat(0, 100); // TODO: real mode + SOC from state
+            let mode_val = CURRENT_MODE_ATOMIC.load(Ordering::Relaxed);
+            let soc_val  = BATTERY_SOC_ATOMIC.load(Ordering::Relaxed);
+            let hb = mgr.build_heartbeat(mode_val, soc_val);
             let hb_len = hb.serialize(&mut tx_buf);
             radio.transmit(&tx_buf[..hb_len]);
             radio.start_receive();
@@ -636,32 +701,90 @@ async fn comms_task(mut radio: LoraRadio) {
 // ─── Motor Control Task ───────────────────────────────────────────────
 // Reads RobotCommand from COMMAND_CHANNEL, converts to wheel RPMs via
 // differential-drive kinematics, and issues CAN frames to the four
-// BLDC motor controllers.  Also handles E-STOP.
+// BLDC motor controllers via FDCAN1.  Controls the deseeder BTS7960
+// H-bridge via TIM3 PWM and soil-probe servos via TIM4 PWM.
+
+/// Build a classic CAN data frame.  Returns None only when `id > 0x7FF`
+/// (impossible with the fixed CAN IDs used here) or `data.len() > 8`.
+fn make_can_frame(id: u16, data: &[u8]) -> Option<ClassicFrame> {
+    let sid = StandardId::new(id)?;
+    let header = Header::new(Id::Standard(sid), data.len() as u8, false);
+    ClassicFrame::new(header, data).ok()
+}
 
 #[embassy_executor::task]
-async fn motor_control_task() {
-    info!("Motor control task started (4× BLDC via FDCAN1)");
+async fn motor_control_task(
+    mut can_tx:       CanTx,
+    mut deseeder_pwm: DeseedPwm,
+    mut servo_pwm:    ServoPwm,
+) {
+    use control::can_messages::{
+        build_speed_command,
+        MOTOR_FL_CMD, MOTOR_FR_CMD, MOTOR_RL_CMD, MOTOR_RR_CMD,
+        DESEEDER_CMD, ESTOP_BROADCAST,
+    };
 
-    // ADR-1 mechanical parameters
+    info!("Motor control task started (4× BLDC via FDCAN1, BTS7960 deseeder, 2× servo)");
+
     let drive = DifferentialDrive::new(
-        0.55,  // track width: 550 mm
-        0.15,  // wheel diameter: 150 mm
-        3000,  // max motor RPM
-        20.0,  // gear ratio 20:1
+        0.55,   // track width  550 mm
+        0.15,   // wheel diam   150 mm
+        3000,   // max RPM
+        20.0,   // gear ratio   20:1
     );
 
-    let mut _state = DriveState::new();
+    let mut state        = DriveState::new();
     let mut estop_active = false;
+    let mut deseed_on    = false;
+    let mut probe_out    = false;
+
+    // Per-motor maximum current — conservative for 15 A BLDC controllers
+    const MAX_DRIVE_MA:  u16 = 15_000;
+    const MAX_DESEED_MA: u16 = 20_000;
+    // Deseeder operating RPM (forward, one-directional)
+    const DESEED_RPM: i16 = 1_200;
+
+    // ── Servo pulse-width duty cycles at 50 Hz (20 ms period) ────────
+    // Standard RC servo:  1 ms → deployed (probe down),  2 ms → retracted
+    // duty = pulse_ms / 20_ms × max_duty
+    let servo_max = servo_pwm.get_max_duty() as u32;
+    let duty_deployed  = ((servo_max * 1_000) / 20_000) as u16; // 5 %
+    let duty_retracted = ((servo_max * 2_000) / 20_000) as u16; // 10 %
+
+    // Initialise servos to retracted (safe, clear of soil surface)
+    servo_pwm.set_duty(Channel::Ch1, duty_retracted);
+    servo_pwm.set_duty(Channel::Ch2, duty_retracted);
+    servo_pwm.enable(Channel::Ch1);
+    servo_pwm.enable(Channel::Ch2);
+
+    // Deseeder starts idle — both BTS7960 inputs low, channels disabled
+    deseeder_pwm.set_duty(Channel::Ch1, 0);
+    deseeder_pwm.set_duty(Channel::Ch2, 0);
 
     loop {
-        // Check for E-STOP signal (non-blocking)
+        // ── E-STOP (non-blocking) ─────────────────────────────────────
         if ESTOP_SIGNAL.signaled() {
             estop_active = ESTOP_SIGNAL.wait().await;
             if estop_active {
-                error!("Motor control: E-STOP — zeroing all motors");
-                // TODO: send zero-RPM CAN frames to all four controllers
+                error!("Motor control: E-STOP activated — broadcasting CAN ESTOP");
+                // DLC-0 broadcast on 0x7FF; every motor controller enters safe-stop
+                if let Some(frame) = make_can_frame(ESTOP_BROADCAST, &[]) {
+                    can_tx.write(&frame).await;
+                }
+                // Zero drive and deseeder state
+                state.front_left.target_rpm  = 0;
+                state.front_right.target_rpm = 0;
+                state.rear_left.target_rpm   = 0;
+                state.rear_right.target_rpm  = 0;
+                state.deseeder.target_rpm    = 0;
+                // Disable deseeder PWM immediately
+                deseeder_pwm.disable(Channel::Ch1);
+                deseeder_pwm.disable(Channel::Ch2);
+                deseed_on = false;
+                CURRENT_MODE_ATOMIC.store(RobotMode::EmergencyStop as u8, Ordering::Relaxed);
             } else {
                 info!("Motor control: E-STOP cleared");
+                estop_active = false;
             }
         }
 
@@ -670,50 +793,171 @@ async fn motor_control_task() {
             continue;
         }
 
-        // Process next command (non-blocking)
+        // ── Process next drive/actuator command (non-blocking) ────────
         if let Ok(cmd) = COMMAND_CHANNEL.try_receive() {
             match cmd.cmd_type {
+
                 CommandType::Drive => {
-                    // mm/s → m/s  and  deg/s×100 → rad/s
-                    let linear_m_s      = cmd.linear_vel  as f32 / 1000.0;
-                    let angular_rad_s   = cmd.angular_vel as f32 / 5729.6;
+                    // Convert protocol units → SI
+                    let linear_m_s    = cmd.linear_vel  as f32 / 1_000.0; // mm/s → m/s
+                    let angular_rad_s = cmd.angular_vel as f32 / 5_729.6; // (deg/s × 100) → rad/s
                     let (left_rpm, right_rpm) =
                         drive.velocity_to_wheel_rpm(linear_m_s, angular_rad_s);
 
+                    state.front_left.target_rpm  = left_rpm;
+                    state.rear_left.target_rpm   = left_rpm;
+                    state.front_right.target_rpm = right_rpm;
+                    state.rear_right.target_rpm  = right_rpm;
+
                     debug!(
-                        "Drive: lin={}mm/s ang={} left={}rpm right={}rpm",
+                        "Drive cmd: lin={}mm/s ang={} L={}rpm R={}rpm",
                         cmd.linear_vel, cmd.angular_vel, left_rpm, right_rpm
                     );
 
-                    // TODO: send {left_rpm, right_rpm} via FDCAN1 CAN frames to
-                    //       front-left, rear-left (left_rpm) and
-                    //       front-right, rear-right (right_rpm) controllers.
+                    // Send speed commands to all four BLDC controllers via FDCAN1
+                    let fl = build_speed_command(left_rpm,  MAX_DRIVE_MA);
+                    let fr = build_speed_command(right_rpm, MAX_DRIVE_MA);
+                    for (id, data) in [
+                        (MOTOR_FL_CMD, fl),
+                        (MOTOR_RL_CMD, fl),
+                        (MOTOR_FR_CMD, fr),
+                        (MOTOR_RR_CMD, fr),
+                    ] {
+                        if let Some(frame) = make_can_frame(id, &data) {
+                            can_tx.write(&frame).await;
+                        }
+                    }
                 }
+
                 CommandType::EmergencyStop => {
                     ESTOP_SIGNAL.signal(true);
                 }
+
                 CommandType::StartDeseeding => {
-                    info!("Motor control: deseeding started");
-                    // TODO: enable deseeder PWM (BTS7960) at target RPM
+                    if !deseed_on {
+                        deseed_on = true;
+                        info!("Deseeder: starting at {} rpm", DESEED_RPM);
+
+                        // Notify the deseeder CAN node (brushless deseeder controller)
+                        let data = build_speed_command(DESEED_RPM, MAX_DESEED_MA);
+                        if let Some(frame) = make_can_frame(DESEEDER_CMD, &data) {
+                            can_tx.write(&frame).await;
+                        }
+
+                        // BTS7960: R_PWM = 70 % forward, L_PWM = 0
+                        let max = deseeder_pwm.get_max_duty() as u32;
+                        let fwd_duty = ((max * 70) / 100) as u16;
+                        deseeder_pwm.set_duty(Channel::Ch1, fwd_duty);
+                        deseeder_pwm.set_duty(Channel::Ch2, 0);
+                        deseeder_pwm.enable(Channel::Ch1);
+                        deseeder_pwm.enable(Channel::Ch2);
+                        state.deseeder.target_rpm = DESEED_RPM;
+                    }
                 }
+
                 CommandType::StopDeseeding => {
-                    info!("Motor control: deseeding stopped");
-                    // TODO: disable deseeder PWM
+                    if deseed_on {
+                        deseed_on = false;
+                        info!("Deseeder: stopping");
+
+                        // Ramp to zero via CAN, then kill PWM
+                        let data = build_speed_command(0, MAX_DESEED_MA);
+                        if let Some(frame) = make_can_frame(DESEEDER_CMD, &data) {
+                            can_tx.write(&frame).await;
+                        }
+                        deseeder_pwm.set_duty(Channel::Ch1, 0);
+                        deseeder_pwm.set_duty(Channel::Ch2, 0);
+                        deseeder_pwm.disable(Channel::Ch1);
+                        deseeder_pwm.disable(Channel::Ch2);
+                        state.deseeder.target_rpm = 0;
+                    }
                 }
+
                 CommandType::DeployProbe => {
-                    info!("Motor control: probe deploy");
-                    // TODO: actuate soil probe servos
+                    if !probe_out {
+                        probe_out = true;
+                        info!("Probe: deploying (servo → 1 ms pulse)");
+                        // Drive both servos to deployed angle (1 ms = 5 % duty)
+                        servo_pwm.set_duty(Channel::Ch1, duty_deployed);
+                        servo_pwm.set_duty(Channel::Ch2, duty_deployed);
+                        // Allow 1.5 s for mechanical travel
+                        Timer::after(Duration::from_millis(1_500)).await;
+                        info!("Probe: deployed");
+                    }
                 }
+
                 CommandType::RetractProbe => {
-                    info!("Motor control: probe retract");
-                    // TODO: retract soil probe servos
+                    if probe_out {
+                        probe_out = false;
+                        info!("Probe: retracting (servo → 2 ms pulse)");
+                        // Return servos to retracted angle (2 ms = 10 % duty)
+                        servo_pwm.set_duty(Channel::Ch1, duty_retracted);
+                        servo_pwm.set_duty(Channel::Ch2, duty_retracted);
+                        Timer::after(Duration::from_millis(1_500)).await;
+                        info!("Probe: retracted");
+                    }
                 }
+
                 _ => {}
             }
         }
 
-        // Control loop at 50 Hz
+        // Control loop: 50 Hz
         Timer::after(Duration::from_millis(20)).await;
     }
 }
-//!
+
+// ─── CAN RX Task ─────────────────────────────────────────────────────
+// Continuously receives frames from FDCAN1 and processes:
+//   - BMS status (0x300) → updates BATTERY_SOC_ATOMIC
+//   - Motor fault feedback (0x180–0x183) → logged as warnings
+
+#[embassy_executor::task]
+async fn can_rx_task(mut can_rx: CanRx) {
+    use control::can_messages::{BMS_STATUS, MOTOR_FL_STATUS, MOTOR_FR_STATUS, MOTOR_RL_STATUS, MOTOR_RR_STATUS};
+
+    info!("CAN RX task started (BMS + motor feedback monitoring)");
+
+    loop {
+        match can_rx.read().await {
+            Ok(frame) => {
+                let raw_id = match frame.header().id() {
+                    Id::Standard(sid) => sid.as_raw() as u32,
+                    Id::Extended(eid) => eid.as_raw(),
+                };
+                let data = frame.data();
+
+                match raw_id as u16 {
+                    id if id == BMS_STATUS && data.len() >= 5 => {
+                        // BMS payload: [volt_hi, volt_lo, curr_hi, curr_lo, soc, temp, fault, 0]
+                        let soc = data[4];
+                        BATTERY_SOC_ATOMIC.store(soc, Ordering::Relaxed);
+                        if soc < 15 {
+                            warn!("Battery low: {}%", soc);
+                        }
+                    }
+                    id if (id == MOTOR_FL_STATUS
+                        || id == MOTOR_FR_STATUS
+                        || id == MOTOR_RL_STATUS
+                        || id == MOTOR_RR_STATUS)
+                        && data.len() >= 6 =>
+                    {
+                        use control::can_messages::parse_motor_status;
+                        let mut buf = [0u8; 8];
+                        let copy_len = data.len().min(8);
+                        buf[..copy_len].copy_from_slice(&data[..copy_len]);
+                        let (actual_rpm, _current, _temp, fault) = parse_motor_status(&buf);
+                        if fault != 0 {
+                            error!("Motor CAN id=0x{:03X} fault=0x{:02X} rpm={}", id, fault, actual_rpm);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Err(e) => {
+                warn!("CAN RX error: {:?}", e);
+                Timer::after(Duration::from_millis(10)).await;
+            }
+        }
+    }
+}

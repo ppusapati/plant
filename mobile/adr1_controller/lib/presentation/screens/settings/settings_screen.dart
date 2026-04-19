@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+import '../../../core/constants/protocol.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/datasources/local_storage.dart';
 import '../../blocs/connection/connection_bloc.dart';
@@ -199,10 +203,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     context.read<ConnectionBloc>().add(ConnectWiFi(addr));
   }
 
-  void _scanBle() {
-    // BLE scan would use flutter_blue_plus to discover ADR-1 devices
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Scanning for ADR-1 robots via BLE...')),
+  Future<void> _scanBle() async {
+    // Verify Bluetooth is available and on
+    if (!await FlutterBluePlus.isAvailable) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bluetooth is not available on this device')),
+        );
+      }
+      return;
+    }
+
+    if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+      await FlutterBluePlus.turnOn();
+      try {
+        await FlutterBluePlus.adapterState
+            .where((s) => s == BluetoothAdapterState.on)
+            .first
+            .timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enable Bluetooth and try again')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    // Show scan sheet; it manages scan lifecycle internally
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _BleScanSheet(
+        onDeviceSelected: (deviceId, deviceName) {
+          context.read<ConnectionBloc>().add(ConnectBle(deviceId, deviceName));
+        },
+      ),
     );
   }
 
@@ -254,6 +296,211 @@ class _SettingsTile extends StatelessWidget {
       subtitle: Text(subtitle),
       trailing: trailing,
       contentPadding: EdgeInsets.zero,
+    );
+  }
+}
+
+// ── BLE Scan Sheet ────────────────────────────────────────────────────
+
+/// Bottom sheet that starts a BLE scan and lists discovered ADR-1 robots.
+/// Filters by the ADR-1 service UUID so only matching devices are shown.
+class _BleScanSheet extends StatefulWidget {
+  /// Called when the user selects a device.  Arguments: deviceId, deviceName.
+  final void Function(String deviceId, String deviceName) onDeviceSelected;
+
+  const _BleScanSheet({required this.onDeviceSelected});
+
+  @override
+  State<_BleScanSheet> createState() => _BleScanSheetState();
+}
+
+class _BleScanSheetState extends State<_BleScanSheet> {
+  StreamSubscription<List<ScanResult>>? _scanSub;
+  StreamSubscription<bool>? _isScanSub;
+  final List<ScanResult> _results = [];
+  bool _scanning = false;
+
+  static const _scanDuration = Duration(seconds: 15);
+
+  @override
+  void initState() {
+    super.initState();
+    _startScan();
+  }
+
+  Future<void> _startScan() async {
+    setState(() {
+      _scanning = true;
+      _results.clear();
+    });
+
+    // Filter to ADR-1 service UUID so unrelated BLE devices are not shown
+    await FlutterBluePlus.startScan(
+      withServices: [Guid(kBleServiceUuid)],
+      timeout: _scanDuration,
+    );
+
+    _scanSub = FlutterBluePlus.onScanResults.listen((results) {
+      if (mounted) {
+        setState(() {
+          _results
+            ..clear()
+            ..addAll(results);
+        });
+      }
+    });
+
+    _isScanSub = FlutterBluePlus.isScanning.listen((scanning) {
+      if (mounted) {
+        setState(() => _scanning = scanning);
+      }
+    });
+  }
+
+  Future<void> _stopScan() async {
+    await FlutterBluePlus.stopScan();
+  }
+
+  @override
+  void dispose() {
+    _scanSub?.cancel();
+    _isScanSub?.cancel();
+    FlutterBluePlus.stopScan();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.55,
+      child: Column(
+        children: [
+          // Handle bar
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // Title row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.bluetooth_searching, color: AppColors.info),
+                const SizedBox(width: 8),
+                const Text(
+                  'ADR-1 Robots nearby',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                if (_scanning)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Scan again',
+                    onPressed: _startScan,
+                  ),
+                if (_scanning)
+                  IconButton(
+                    icon: const Icon(Icons.stop),
+                    tooltip: 'Stop scanning',
+                    onPressed: _stopScan,
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Device list
+          Expanded(
+            child: _results.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: _scanning
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Scanning for ADR-1 robots…',
+                                  style: TextStyle(color: AppColors.textSecondary),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.bluetooth_disabled,
+                                    size: 48, color: AppColors.textSecondary),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No ADR-1 robots found.',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Make sure the robot is powered on\nand within BLE range (≤ 10 m).',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary, fontSize: 13),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _startScan,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Scan again'),
+                                ),
+                              ],
+                            ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _results.length,
+                    itemBuilder: (_, i) {
+                      final r = _results[i];
+                      final name = r.device.platformName.isNotEmpty
+                          ? r.device.platformName
+                          : 'ADR-1 Robot';
+                      final id = r.device.remoteId.str;
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: AppColors.primary,
+                          child: Icon(Icons.precision_manufacturing,
+                              color: Colors.white, size: 20),
+                        ),
+                        title: Text(name),
+                        subtitle: Text(id,
+                            style:
+                                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        trailing: Text(
+                          '${r.rssi} dBm',
+                          style: TextStyle(
+                            color: r.rssi > -70 ? AppColors.success : AppColors.warning,
+                            fontSize: 12,
+                          ),
+                        ),
+                        onTap: () {
+                          widget.onDeviceSelected(id, name);
+                          Navigator.of(context).pop();
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
