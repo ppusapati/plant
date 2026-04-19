@@ -5,6 +5,7 @@
 //! Used for status indication on the controller.
 
 use defmt::*;
+use embedded_hal::spi::SpiBus;
 
 /// Number of LEDs in the chain
 pub const NUM_LEDS: usize = 4;
@@ -186,5 +187,21 @@ impl LedController {
             data[i * 3 + 2] = grb[2];
         }
         data
+    }
+
+    /// Flush the current LED state to the APA102 chain via SPI.
+    ///
+    /// Builds the full wire frame (start frame + LED frames + end frame) with
+    /// [`generate_spi_data`] and writes it to `spi` in a single blocking
+    /// transfer.  Call this after every [`update_status`] or [`set`] to make
+    /// the new colours visible on the hardware.
+    ///
+    /// # APA102 frame format
+    /// - **Start frame**: 4 × 0x00
+    /// - **LED frame** (one per LED): `0xE0 | brightness[4:0]`, Blue, Green, Red
+    /// - **End frame**: 4 × 0xFF  (≥ N/2 clock edges needed; 4 bytes covers ≤ 64 LEDs)
+    pub fn write<SPI: SpiBus>(&self, spi: &mut SPI) -> Result<(), SPI::Error> {
+        let frame = self.generate_spi_data();
+        spi.write(&frame)
     }
 }

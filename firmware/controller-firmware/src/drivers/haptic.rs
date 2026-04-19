@@ -4,6 +4,7 @@
 //! Supports LRA (Linear Resonant Actuator) mode with built-in effects library.
 
 use defmt::*;
+use embedded_hal::i2c::I2c;
 
 /// DRV2605L I2C address
 pub const DRV2605L_ADDR: u8 = 0x5A;
@@ -140,5 +141,141 @@ impl HapticPattern {
             ],
             Self::LowBattery => &[HapticEffect::PulsingMedium1],
         }
+    }
+}
+
+/// I2C driver for the TI DRV2605L haptic motor controller.
+///
+/// Configured for **LRA (Linear Resonant Actuator) open-loop internal-trigger**
+/// mode, which does not require auto-calibration and works immediately after
+/// `init()`.  Call `play_pattern()` with any [`HapticPattern`] to trigger
+/// tactile feedback.
+///
+/// The generic `I2C` parameter must implement `embedded_hal::i2c::I2c`
+/// (the blocking variant).  On the ESP32-S3 controller this will typically
+/// be `esp_hal::i2c::master::I2c<'static, esp_hal::Blocking>`.
+///
+/// # Example
+/// ```rust
+/// let mut haptic = Drv2605l::new(i2c_bus);
+/// haptic.init().ok();
+/// haptic.play_pattern(HapticPattern::ButtonPress).ok();
+/// ```
+pub struct Drv2605l<I2C> {
+    i2c: I2C,
+}
+
+impl<I2C: I2c> Drv2605l<I2C> {
+    /// Create a new driver wrapping `i2c`.
+    ///
+    /// `I2C` must be configured with the DRV2605L I2C address already
+    /// set (address 0x5A).  Call `init()` before using any other method.
+    pub fn new(i2c: I2C) -> Self {
+        Self { i2c }
+    }
+
+    // ── Private I2C helpers ───────────────────────────────────────────
+
+    fn write_reg(&mut self, register: u8, value: u8) -> Result<(), I2C::Error> {
+        self.i2c.write(DRV2605L_ADDR, &[register, value])
+    }
+
+    fn read_reg(&mut self, register: u8) -> Result<u8, I2C::Error> {
+        let mut buf = [0u8; 1];
+        self.i2c.write_read(DRV2605L_ADDR, &[register], &mut buf)?;
+        Ok(buf[0])
+    }
+
+    // ── Public API ────────────────────────────────────────────────────
+
+    /// Initialize the DRV2605L for LRA open-loop internal-trigger mode.
+    ///
+    /// Programs all necessary control registers.  No auto-calibration is
+    /// performed, so the call returns quickly (no waiting required).
+    ///
+    /// Must be called once before `play_pattern()` or `stop()`.
+    pub fn init(&mut self) -> Result<(), I2C::Error> {
+        // Clear any fault state and enter standby
+        self.write_reg(reg::MODE, 0x00)?;
+
+        // Select LRA waveform library (library 6 = LRA)
+        self.write_reg(reg::LIBRARY_SEL, 0x06)?;
+
+        // Feedback control: N_ERM_LRA=1 (LRA mode), FB_BRAKE_FACTOR=3, LOOP_GAIN=1
+        // 0xB6 = 1011_0110
+        self.write_reg(reg::FEEDBACK_CTRL, 0xB6)?;
+
+        // CTRL1: STARTUP_BOOST=1, drive time ≈ 2 ms for a ~150 Hz LRA
+        // 0x13 = 0001_0011
+        self.write_reg(reg::CTRL1, 0x13)?;
+
+        // CTRL2: BIDIR_INPUT=1, BRAKE_STABILIZER=1, SAMPLE_TIME=3,
+        //        BLANKING_TIME=1, IDISS_TIME=1
+        // 0xF5 = 1111_0101
+        self.write_reg(reg::CTRL2, 0xF5)?;
+
+        // CTRL3: LRA_OPEN_LOOP=1 (skip auto-cal), NG_THRESH=1
+        // 0xA1 = 1010_0001
+        self.write_reg(reg::CTRL3, 0xA1)?;
+
+        // CTRL4: AUTO_CAL_TIME=3 (1000 ms window — unused in open-loop)
+        // 0x20 = 0010_0000
+        self.write_reg(reg::CTRL4, 0x20)?;
+
+        // CTRL5: LRA_AUTO_OPEN_LOOP=1, PLAYBACK_INTERVAL=1
+        // 0x80 = 1000_0000
+        self.write_reg(reg::CTRL5, 0x80)?;
+
+        // Rated voltage: ~2.0 V RMS for a typical 150 Hz LRA
+        self.write_reg(reg::RATED_VOLTAGE, 0x3E)?;
+
+        // Overdrive clamp: ~3.2 V
+        self.write_reg(reg::OD_CLAMP, 0x8C)?;
+
+        // Internal-trigger playback mode (MODE = 0x00)
+        self.write_reg(reg::MODE, 0x00)?;
+
+        info!("DRV2605L: initialized (LRA open-loop internal-trigger)");
+        Ok(())
+    }
+
+    /// Play a haptic feedback pattern.
+    ///
+    /// Loads the effect IDs returned by [`HapticPattern::effects()`] into
+    /// waveform sequencer slots 0x04–0x0B (up to 8 effects) and sets the
+    /// GO bit to trigger immediate playback.
+    ///
+    /// The DRV2605L plays through the sequence autonomously; you do not
+    /// need to wait for completion before calling again.
+    pub fn play_pattern(&mut self, pattern: HapticPattern) -> Result<(), I2C::Error> {
+        let effects = pattern.effects();
+
+        // Ensure internal-trigger mode is active
+        self.write_reg(reg::MODE, 0x00)?;
+
+        // Load effect IDs into waveform sequencer slots (max 8)
+        let n = effects.len().min(8);
+        for (i, effect) in effects[..n].iter().enumerate() {
+            self.write_reg(reg::WAVEFORM_SEQ + i as u8, *effect as u8)?;
+        }
+        // Terminate the sequence with 0x00 if fewer than 8 slots are used
+        if n < 8 {
+            self.write_reg(reg::WAVEFORM_SEQ + n as u8, 0x00)?;
+        }
+
+        // Trigger playback
+        self.write_reg(reg::GO, 0x01)?;
+
+        Ok(())
+    }
+
+    /// Stop any currently playing haptic pattern immediately.
+    pub fn stop(&mut self) -> Result<(), I2C::Error> {
+        self.write_reg(reg::GO, 0x00)
+    }
+
+    /// Read the STATUS register.  Bit 3 (DIAG_RESULT) is `1` on a device fault.
+    pub fn status(&mut self) -> Result<u8, I2C::Error> {
+        self.read_reg(reg::STATUS)
     }
 }

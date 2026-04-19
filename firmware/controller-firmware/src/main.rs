@@ -49,6 +49,9 @@ type LoraReset = Output<'static>;
 /// Fully-typed LoRa radio driver for the comms task
 type LoraRadio = ControllerRadio<LoraSpi, LoraCs, LoraReset>;
 
+/// Blocking SPI3 for APA102-2020 status LEDs (GPIO46 CLK, GPIO45 MOSI)
+type LedSpi = Spi<'static, esp_hal::Blocking>;
+
 // ─── Inter-task communication ─────────────────────────────────────────
 
 /// Latest telemetry from robot (comms task → display + status LED tasks)
@@ -66,9 +69,10 @@ static ESTOP_SIGNAL: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 /// Link quality (comms task → status LED task)
 static LINK_STATUS: Signal<CriticalSectionRawMutex, ControllerCommsState> = Signal::new();
 
-// ─── Static cell for LoRa radio ───────────────────────────────────────
+// ─── Static cells for hardware resources ──────────────────────────────
 
 static LORA_RADIO: StaticCell<LoraRadio> = StaticCell::new();
+static LED_SPI: StaticCell<LedSpi> = StaticCell::new();
 
 // ─── Main entry point ─────────────────────────────────────────────────
 
@@ -107,11 +111,22 @@ async fn main(spawner: Spawner) {
     let radio = ControllerRadio::new(lora_spi, lora_cs, lora_reset);
     let radio_static = LORA_RADIO.init(radio);
 
+    // ─── SPI3 → APA102-2020 Status LEDs ──────────────────────────────
+    // Pinout (controller PCB v1.2):
+    //   GPIO46 = SCK, GPIO45 = MOSI  (data only, no MISO / no CS)
+    let led_spi_cfg = SpiConfig::default()
+        .with_frequency(8_000_000.Hz())
+        .with_mode(SpiMode::Mode0);
+    let led_spi = Spi::new(peripherals.SPI3, led_spi_cfg)
+        .with_sck(peripherals.GPIO46)
+        .with_mosi(peripherals.GPIO45);
+    let led_spi_static = LED_SPI.init(led_spi);
+
     // ─── Spawn all subsystem tasks ────────────────────────────────────
     spawner.must_spawn(lora_comms_task(radio_static));
     spawner.must_spawn(input_task());
     spawner.must_spawn(display_task());
-    spawner.must_spawn(status_led_task());
+    spawner.must_spawn(status_led_task(led_spi_static));
 
     info!("ADR-1 Controller Firmware initialized — all tasks spawned");
 
@@ -412,46 +427,37 @@ async fn display_task() {
 //   Red   slow pulse            — link lost / E-STOP
 
 #[embassy_executor::task]
-async fn status_led_task() {
-    info!("Status LED task started");
+async fn status_led_task(spi: &'static mut LedSpi) {
+    use crate::drivers::ws2812::LedController;
 
+    info!("Status LED task started (APA102-2020 via SPI3)");
+
+    let mut ctrl = LedController::new();
     let mut link_state = ControllerCommsState::Scanning;
-    let mut tick: u32 = 0;
 
     loop {
+        // Check for a new link state (non-blocking peek via signaled())
         if LINK_STATUS.signaled() {
             link_state = LINK_STATUS.wait().await;
         }
 
-        let (r, g, b): (u8, u8, u8) = match link_state {
-            ControllerCommsState::Scanning => {
-                let v = ((tick % 20) * 6) as u8;
-                (0, v / 2, v)
-            }
-            ControllerCommsState::Connected => {
-                if (tick % 20) < 4 { (0, 80, 0) } else { (0, 0, 0) }
-            }
-            ControllerCommsState::ActiveControl => {
-                if (tick % 4) < 2 { (0, 0, 120) } else { (0, 0, 0) }
-            }
-            ControllerCommsState::Degraded => {
-                let v: u8 = if (tick % 10) < 5 { 100 } else { 20 };
-                (v, v, 0)
-            }
-            ControllerCommsState::Disconnected => {
-                let v: u8 = if (tick % 20) < 10 { 80 } else { 10 };
-                (v, 0, 0)
-            }
+        // Map link state to connected / mode / rssi for LedController
+        let (connected, mode, rssi) = match link_state {
+            ControllerCommsState::Scanning     => (false, 0u8, -130i16),
+            ControllerCommsState::Connected    => (true,  1,   -80),
+            ControllerCommsState::ActiveControl => (true, 1,   -70),
+            ControllerCommsState::Degraded     => (true,  2,   -110),
+            ControllerCommsState::Disconnected => (false, 5,   -130),
         };
 
-        // APA102 SPI frame:
-        //   4× 0x00         — start frame
-        //   0xFF, B, G, R   — LED data frame (brightness = max)
-        //   0xFF            — end frame
-        // TODO: write via SPI once LED SPI is wired in main()
-        let _led_frame = [0x00u8, 0x00, 0x00, 0x00, 0xFF, b, g, r, 0xFF];
+        // Update LED colours (battery_soc = 100 unless telemetry arrives)
+        ctrl.update_status(connected, mode, 100, rssi);
 
-        tick = tick.wrapping_add(1);
+        // Flush to hardware via SPI3 → APA102 chain
+        if let Err(_) = ctrl.write(spi) {
+            warn!("APA102: SPI write error");
+        }
+
         Timer::after(Duration::from_millis(50)).await;
     }
 }

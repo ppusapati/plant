@@ -259,5 +259,3 @@ fn spin_delay_ms(ms: u32) {
     }
 }
 
-
-/// SX1276 register addresses (same as robot driver)

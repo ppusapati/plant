@@ -10,6 +10,8 @@
 //! Range: 20cm to 765cm, resolution: 1cm, accuracy: ±1cm.
 
 use defmt::*;
+use embassy_stm32::gpio::Input;
+use embassy_time::{Duration, Instant, Timer};
 
 /// Speed of sound at 20°C in cm/µs
 const SPEED_OF_SOUND_CM_US: f32 = 0.0343;
@@ -173,4 +175,147 @@ pub fn median_filter(samples: &mut [u16; 5]) -> u16 {
         samples[j] = key;
     }
     samples[2] // Return median
+}
+
+/// Async driver for a single MaxBotix MB1240 ultrasonic sensor.
+///
+/// The MB1240 continuously measures and drives its PW (pulse-width) output
+/// pin HIGH for 147 µs per inch of range (≈ 57.9 µs/cm).  This driver
+/// detects each pulse via an Embassy `Input` GPIO and records its width
+/// using `Instant`, which has ≈ 30 µs resolution at 32.768 kHz — yielding
+/// ≈ ±1 cm absolute accuracy, sufficient for obstacle detection.
+///
+/// Measurements are passed through a 5-sample median filter to reject
+/// spurious readings caused by acoustic reflections.
+///
+/// Usage:
+/// ```
+/// let sensor = Mb1240::new(SensorPosition::Front, pw_input_pin);
+/// loop {
+///     let m = sensor.measure().await;
+///     obstacle_map.update(m);
+/// }
+/// ```
+pub struct Mb1240 {
+    /// Physical mounting position of this sensor.
+    pub position: SensorPosition,
+    /// GPIO connected to the MB1240 PW output (active-high pulse).
+    pw: Input<'static>,
+    /// Circular buffer of recent raw distance readings (mm) for median filter.
+    filter_buf: [u16; 5],
+    /// Write index into `filter_buf`.
+    filter_idx: usize,
+    /// Air temperature used for speed-of-sound compensation (°C, default 25 °C).
+    pub air_temp_c: f32,
+}
+
+impl Mb1240 {
+    /// Create a new MB1240 driver.
+    ///
+    /// `pw` must be connected to the sensor's PW (pulse-width) output pin.
+    /// The sensor drives this pin actively (no pull resistors needed).
+    pub fn new(position: SensorPosition, pw: Input<'static>) -> Self {
+        Self {
+            position,
+            pw,
+            filter_buf: [u16::MAX; 5],
+            filter_idx: 0,
+            air_temp_c: 25.0,
+        }
+    }
+
+    /// Take a single temperature-compensated, median-filtered distance
+    /// measurement (async).
+    ///
+    /// Waits for the next complete PW pulse (rising → falling edge) and
+    /// returns an [`UltrasonicMeasurement`].  Times out after 120 ms; if
+    /// the sensor is not responding the returned measurement has `valid = false`
+    /// and `distance_mm = u16::MAX`.
+    pub async fn measure(&mut self) -> UltrasonicMeasurement {
+        let echo_us = self.measure_pulse_us().await;
+
+        let raw_distance =
+            echo_us.and_then(|us| compensated_distance_mm(us, self.air_temp_c));
+
+        let distance_mm = if let Some(d) = raw_distance {
+            // Push into the sliding window and return the median
+            self.filter_buf[self.filter_idx % 5] = d;
+            self.filter_idx = self.filter_idx.wrapping_add(1);
+            let mut buf = self.filter_buf;
+            median_filter(&mut buf)
+        } else {
+            u16::MAX
+        };
+
+        let valid = raw_distance.is_some();
+
+        if valid {
+            debug!(
+                "Ultrasonic[{}]: {} mm",
+                self.position as u8,
+                distance_mm,
+            );
+        }
+
+        UltrasonicMeasurement {
+            position: self.position,
+            distance_mm,
+            valid,
+            echo_us: echo_us.unwrap_or(0),
+        }
+    }
+
+    /// Measure the PW pulse width in microseconds by watching GPIO edges.
+    ///
+    /// Returns `None` if any phase of the measurement times out (120 ms limit
+    /// covers the full cycle period with margin).
+    async fn measure_pulse_us(&mut self) -> Option<u32> {
+        const TIMEOUT: Duration = Duration::from_millis(120);
+        const POLL: Duration = Duration::from_micros(50);
+
+        let deadline = Instant::now() + TIMEOUT;
+
+        // 1. If the pin is already HIGH, wait for it to go LOW first so we
+        //    catch a clean rising edge (not the tail of a previous pulse).
+        if self.pw.is_high() {
+            loop {
+                if self.pw.is_low() {
+                    break;
+                }
+                if Instant::now() >= deadline {
+                    warn!("Ultrasonic[{}]: timeout waiting for LOW", self.position as u8);
+                    return None;
+                }
+                Timer::after(POLL).await;
+            }
+        }
+
+        // 2. Wait for the rising edge.
+        loop {
+            if self.pw.is_high() {
+                break;
+            }
+            if Instant::now() >= deadline {
+                warn!("Ultrasonic[{}]: timeout waiting for rising edge", self.position as u8);
+                return None;
+            }
+            Timer::after(POLL).await;
+        }
+
+        let start = Instant::now();
+
+        // 3. Wait for the falling edge.
+        loop {
+            if self.pw.is_low() {
+                break;
+            }
+            if Instant::now() >= deadline {
+                warn!("Ultrasonic[{}]: timeout waiting for falling edge", self.position as u8);
+                return None;
+            }
+            Timer::after(POLL).await;
+        }
+
+        Some((Instant::now() - start).as_micros() as u32)
+    }
 }
