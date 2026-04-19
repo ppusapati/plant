@@ -461,6 +461,13 @@ mod tests {
     }
 
     #[test]
+    fn range_score_zero_width_range() {
+        // When min == max, the value is at the single-point optimal range.
+        // margin = 0, so any deviation gives score 0, but value == min == max → 1000.
+        assert_eq!(range_score(50, 50, 50), 1000);
+    }
+
+    #[test]
     fn range_score_just_outside_gives_partial() {
         // Range [0, 100], margin = 50. Value = -25 → deficit = 25 → score = (50-25)*1000/50 = 500
         let score = range_score(-25, 0, 100);

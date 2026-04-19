@@ -138,6 +138,11 @@ pub struct Sx1276<SPI> {
     seq_counter: u16,
 }
 
+/// The SX1276 driver uses `SpiBus` (not `SpiDevice`) because it controls
+/// the CS pin directly as a separate GPIO output.  This is necessary to
+/// perform back-to-back single-byte FIFO reads without de-asserting CS
+/// between each byte.  A `SpiDevice` wrapper would toggle CS on every
+/// transaction, which does not match the SX1276's FIFO access protocol.
 impl<SPI> Sx1276<SPI>
 where
     SPI: embedded_hal::spi::SpiBus,

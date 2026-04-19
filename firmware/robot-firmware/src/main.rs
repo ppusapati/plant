@@ -394,7 +394,11 @@ async fn sensor_task(
             let adc_t = ((raw[3] as u32) << 12) | ((raw[4] as u32) << 4) | ((raw[5] as u32) >> 4);
             let adc_p = ((raw[0] as u32) << 12) | ((raw[1] as u32) << 4) | ((raw[2] as u32) >> 4);
             let adc_h = ((raw[6] as u16) << 8) | raw[7] as u16;
-            // Rough linear approximation (proper compensation uses trim registers):
+            // NOTE: Proper BME280 compensation requires reading 18 bytes of factory
+            // trim registers from 0x88–0xA1 and 0xE1–0xE7 and applying Bosch's
+            // signed 64-bit compensation formula.  The linear approximations below
+            // give ±5 °C / ±20 hPa accuracy and are suitable for early integration
+            // testing; replace with the full compensation when trim data is available.
             env.air_temp = (adc_t as i32 * 100 / 5120) as i16; // °C × 100
             env.pressure = adc_p / 256;                          // Pa (approx)
             env.humidity = adc_h / 512;                          // % (approx)
@@ -421,6 +425,9 @@ async fn navigation_task() {
     use navigation::ekf::Ekf;
 
     info!("Navigation task started (EKF sensor fusion + path planning)");
+
+    // Scale factor: rad/s → (deg/s × 100).  = (180/π) × 100 ≈ 5729.58
+    const RAD_TO_DEG_SCALED: f32 = 5729.58;
 
     let mut ekf = Ekf::new(0.02); // 50 Hz nominal prediction step
     let mut planner = PathPlanner::new();
@@ -457,7 +464,7 @@ async fn navigation_task() {
                 let cmd = RobotCommand {
                     cmd_type:    CommandType::Drive,
                     linear_vel:  (drive_cmd.linear * 1000.0) as i16,
-                    angular_vel: (drive_cmd.angular * 5729.6) as i16, // rad/s → deg/s × 100
+                    angular_vel: (drive_cmd.angular * RAD_TO_DEG_SCALED) as i16,
                     deseeder_on: drive_cmd.deseed,
                     probe_deploy: false,
                 };
@@ -474,7 +481,7 @@ async fn navigation_task() {
                 let cmd = RobotCommand {
                     cmd_type:    CommandType::Drive,
                     linear_vel:  (drive_cmd.linear * 1000.0) as i16,
-                    angular_vel: (drive_cmd.angular * 5729.6) as i16,
+                    angular_vel: (drive_cmd.angular * RAD_TO_DEG_SCALED) as i16,
                     deseeder_on: false,
                     probe_deploy: false,
                 };
