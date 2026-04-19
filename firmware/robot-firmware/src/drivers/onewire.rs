@@ -127,9 +127,14 @@ impl OneWireBus {
     /// iteration per CPU cycle.  At STM32H743 SYSCLK = 480 MHz this gives
     /// ~480 cycles/µs.  Being a few µs longer than requested is safe for
     /// 1-Wire because all timing constraints are "at least N µs".
+    ///
+    /// **Note:** This multiplier is calibrated for the 480 MHz SYSCLK
+    /// configured in `main.rs`.  If the clock is changed, update the
+    /// constant `CYCLES_PER_US` below accordingly.
     #[inline]
     fn delay_us(&self, us: u32) {
-        cortex_m::asm::delay(us.saturating_mul(480));
+        const CYCLES_PER_US: u32 = 480; // STM32H743 SYSCLK = 480 MHz
+        cortex_m::asm::delay(us.saturating_mul(CYCLES_PER_US));
     }
 
     // ── 1-Wire primitives ────────────────────────────────────────────────

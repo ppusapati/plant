@@ -454,7 +454,7 @@ async fn status_led_task(spi: &'static mut LedSpi) {
         ctrl.update_status(connected, mode, 100, rssi);
 
         // Flush to hardware via SPI3 → APA102 chain
-        if let Err(_) = ctrl.write(spi) {
+        if ctrl.write(spi).is_err() {
             warn!("APA102: SPI write error");
         }
 
